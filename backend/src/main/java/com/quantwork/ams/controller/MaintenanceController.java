@@ -3,6 +3,7 @@ package com.quantwork.ams.controller;
 import com.quantwork.ams.model.Asset;
 import com.quantwork.ams.model.MaintenanceTicket;
 import com.quantwork.ams.service.ActivityLogService;
+import com.quantwork.ams.service.AssetAuditLogService;
 import com.quantwork.ams.service.AssetService;
 import com.quantwork.ams.service.MaintenanceTicketService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,9 @@ public class MaintenanceController {
     @Autowired
     private ActivityLogService activityLogService;
 
+    @Autowired
+    private AssetAuditLogService assetAuditLogService;
+
     @GetMapping
     public ResponseEntity<List<MaintenanceTicket>> getTickets(
             @RequestParam(required = false) String maintenanceType,
@@ -46,7 +50,8 @@ public class MaintenanceController {
     public ResponseEntity<MaintenanceTicket> createTicket(
             @RequestBody MaintenanceTicket ticket,
             @RequestParam(defaultValue = "Admin") String currentUser,
-            @RequestParam(required = false) String companyId) {
+            @RequestParam(required = false) String companyId,
+            @RequestParam(required = false) String userId) {
 
         if (companyId != null && !companyId.trim().isEmpty()) {
             ticket.setCompanyId(companyId);
@@ -80,6 +85,18 @@ public class MaintenanceController {
                 saved.getCompanyId()
         );
 
+        if (saved.getAssetId() != null) {
+            assetAuditLogService.recordAssetEvent(
+                    saved.getAssetId(),
+                    saved.getCompanyId(),
+                    saved.getAssetTag() != null ? saved.getAssetTag() : "MAINTENANCE",
+                    "MAINTENANCE_OPENED",
+                    "Maintenance ticket created for asset " + saved.getAssetName() + ": " + (saved.getIssueKeyword() != null ? saved.getIssueKeyword() : saved.getProblemDescription()),
+                    currentUser,
+                    userId
+            );
+        }
+
         return ResponseEntity.ok(saved);
     }
 
@@ -87,7 +104,8 @@ public class MaintenanceController {
     public ResponseEntity<MaintenanceTicket> updateTicket(
             @PathVariable String id,
             @RequestBody MaintenanceTicket details,
-            @RequestParam(defaultValue = "Admin") String currentUser) {
+            @RequestParam(defaultValue = "Admin") String currentUser,
+            @RequestParam(required = false) String userId) {
 
         Optional<MaintenanceTicket> existingOpt = ticketService.getTicketById(id);
         if (existingOpt.isEmpty()) {
@@ -116,6 +134,18 @@ public class MaintenanceController {
                 updated.getCompanyId()
         );
 
+        if (updated.getAssetId() != null) {
+            assetAuditLogService.recordAssetEvent(
+                    updated.getAssetId(),
+                    updated.getCompanyId(),
+                    updated.getAssetTag() != null ? updated.getAssetTag() : "MAINTENANCE",
+                    "MAINTENANCE_UPDATED",
+                    "Maintenance ticket updated for asset " + updated.getAssetName() + " [Status: " + updated.getStatus() + "]",
+                    currentUser,
+                    userId
+            );
+        }
+
         return ResponseEntity.ok(updated);
     }
 
@@ -123,7 +153,8 @@ public class MaintenanceController {
     public ResponseEntity<MaintenanceTicket> resolveTicket(
             @PathVariable String id,
             @RequestBody(required = false) MaintenanceTicket details,
-            @RequestParam(defaultValue = "Admin") String currentUser) {
+            @RequestParam(defaultValue = "Admin") String currentUser,
+            @RequestParam(required = false) String userId) {
 
         Optional<MaintenanceTicket> existingOpt = ticketService.getTicketById(id);
         if (existingOpt.isEmpty()) {
@@ -166,6 +197,18 @@ public class MaintenanceController {
                 "RESOLVE_MAINTENANCE",
                 updated.getCompanyId()
         );
+
+        if (updated.getAssetId() != null) {
+            assetAuditLogService.recordAssetEvent(
+                    updated.getAssetId(),
+                    updated.getCompanyId(),
+                    updated.getAssetTag() != null ? updated.getAssetTag() : "MAINTENANCE",
+                    "MAINTENANCE_RESOLVED",
+                    "Maintenance completed for asset " + updated.getAssetName() + " with status " + updated.getStatus(),
+                    currentUser,
+                    userId
+            );
+        }
 
         return ResponseEntity.ok(updated);
     }

@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 
@@ -42,7 +43,6 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedUsers() {
         List<User> users = Arrays.asList(
-                // Super Admin Governance Credentials ONLY
                 new User("u-sa", "SYSTEM", "Super Admin Governance", "Super Admin", "superadmin@quantworks.com", "superadmin123", "SUPER_ADMIN", "Executive", "SA", true)
         );
         userService.initSeedData(users);

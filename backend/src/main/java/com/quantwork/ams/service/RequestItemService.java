@@ -38,10 +38,46 @@ public class RequestItemService {
         if (request.getCreatedAt() == null || request.getCreatedAt().trim().isEmpty()) {
             request.setCreatedAt(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
         }
+        if (request.getUpdatedAt() == null || request.getUpdatedAt().trim().isEmpty()) {
+            request.setUpdatedAt(request.getCreatedAt());
+        }
+        if (request.getRequestType() == null || request.getRequestType().trim().isEmpty()) {
+            request.setRequestType("NEW_ASSET");
+        }
+        if (request.getRequestCategory() == null || request.getRequestCategory().trim().isEmpty()) {
+            request.setRequestCategory("Hardware");
+        }
+        if (request.getPriority() == null || request.getPriority().trim().isEmpty()) {
+            request.setPriority("Medium");
+        }
+        if (request.getQuantity() == null || request.getQuantity().trim().isEmpty()) {
+            request.setQuantity("1");
+        }
         if (request.getManagerStatus() == null) request.setManagerStatus("PENDING");
         if (request.getAdminStatus() == null) request.setAdminStatus("PENDING");
+        if (request.getStatus() == null || request.getStatus().trim().isEmpty()) {
+            request.setStatus(request.getManagerStatus());
+        }
 
         return requestItemRepository.save(request);
+    }
+
+    public Optional<RequestItem> getRequestsByEmployee(String employeeId) {
+        return requestItemRepository.findByEmployeeId(employeeId);
+    }
+
+    public List<RequestItem> getRequestsByEmployeeList(String employeeId) {
+        return requestItemRepository.findByEmployeeIdOrderByCreatedAtDesc(employeeId);
+    }
+
+    public boolean isValidStatusTransition(String currentStatus, String nextStatus) {
+        if (currentStatus == null || currentStatus.trim().isEmpty()) {
+            return "PENDING".equalsIgnoreCase(nextStatus);
+        }
+        if ("PENDING".equalsIgnoreCase(currentStatus)) {
+            return "APPROVED".equalsIgnoreCase(nextStatus) || "REJECTED".equalsIgnoreCase(nextStatus);
+        }
+        return false;
     }
 
     public boolean deleteRequest(String id) {
