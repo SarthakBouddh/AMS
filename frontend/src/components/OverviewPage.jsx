@@ -1,10 +1,18 @@
 import React from 'react';
 import { Plus, ArrowUpRight, Boxes, Gauge, DollarSign, AlertTriangle, Activity } from 'lucide-react';
 
-export default function OverviewPage({ stats, onAddAssetClick, onViewInventoryClick }) {
+export default function OverviewPage({ stats, currentUser, onAddAssetClick, onAddRequestClick, onViewInventoryClick }) {
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
   };
+
+  const normalizedRole = (currentUser?.role || '').toLowerCase();
+  const isAdminLike = normalizedRole.includes('admin') || normalizedRole.includes('director') || normalizedRole.includes('head');
+  const isManagerLike = normalizedRole.includes('manager') || normalizedRole.includes('lead') || normalizedRole.includes('supervisor');
+  const isEmployeeLike = normalizedRole.includes('employee') || normalizedRole.includes('engineer') || normalizedRole.includes('developer') || normalizedRole.includes('support');
+  const canManageAssets = !currentUser?.superAdmin && isAdminLike;
+  const canSubmitRequest = !currentUser?.superAdmin;
+  const isEmployeeView = !currentUser?.superAdmin && isEmployeeLike;
 
   const totalAssets = stats?.totalAssets ?? 5;
   const availableAssets = stats?.availableAssets ?? 2;
@@ -16,7 +24,7 @@ export default function OverviewPage({ stats, onAddAssetClick, onViewInventoryCl
   // Portfolio mix computation
   const hardwareVal = stats?.categoryValue?.['Hardware'] ?? 3998;
   const hardwareCount = stats?.categoryCount?.['Hardware'] ?? 3;
-  
+
   const softwareVal = stats?.categoryValue?.['Software'] ?? 28500;
   const softwareCount = stats?.categoryCount?.['Software'] ?? 1;
 
@@ -41,73 +49,106 @@ export default function OverviewPage({ stats, onAddAssetClick, onViewInventoryCl
           </p>
         </div>
 
-        <button
-          onClick={onAddAssetClick}
-          className="inline-flex items-center px-4 py-2.5 rounded-xl bg-[#1c372e] text-white text-sm font-bold shadow-md hover:bg-[#142a23] transition-all transform active:scale-95 shrink-0"
-        >
-          <Plus className="w-4 h-4 mr-2 text-[#f4c453]" />
-          <span>Add asset</span>
-        </button>
-      </div>
+        <div className="flex items-center gap-3">
+          {!isEmployeeView && canManageAssets && (
+            <button
+              onClick={onAddAssetClick}
+              className="inline-flex items-center px-4 py-2.5 rounded-xl bg-[#1c372e] text-white text-sm font-bold shadow-md hover:bg-[#142a23] transition-all transform active:scale-95 shrink-0"
+            >
+              <Plus className="w-4 h-4 mr-2 text-[#f4c453]" />
+              <span>Add asset</span>
+            </button>
+          )}
 
-      {/* 4 Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Card 1: Total assets */}
-        <div className="bg-white p-6 rounded-2xl border border-[#eae7de] card-shadow card-hover-shadow relative group">
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-[#e3efe9] text-[#1c372e] flex items-center justify-center">
-              <Boxes className="w-5 h-5" />
-            </div>
-            <ArrowUpRight className="w-4 h-4 text-[#a3b2ac] group-hover:text-[#1c372e] transition-colors" />
-          </div>
-          <p className="text-xs font-semibold text-[#73827d] mt-4 uppercase tracking-wider">Total assets</p>
-          <h3 className="font-heading text-3xl font-extrabold text-[#1c2826] mt-1">{totalAssets}</h3>
-          <p className="text-xs text-[#73827d] mt-1 font-medium">{availableAssets} available now</p>
-        </div>
-
-        {/* Card 2: Utilization rate */}
-        <div className="bg-white p-6 rounded-2xl border border-[#eae7de] card-shadow card-hover-shadow relative group">
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-[#fef5db] text-[#b88c1c] flex items-center justify-center">
-              <Gauge className="w-5 h-5" />
-            </div>
-            <ArrowUpRight className="w-4 h-4 text-[#a3b2ac] group-hover:text-[#1c372e] transition-colors" />
-          </div>
-          <p className="text-xs font-semibold text-[#73827d] mt-4 uppercase tracking-wider">Utilization rate</p>
-          <h3 className="font-heading text-3xl font-extrabold text-[#1c2826] mt-1">{utilizationRate}%</h3>
-          <p className="text-xs text-[#73827d] mt-1 font-medium">{assignedCount} currently assigned</p>
-        </div>
-
-        {/* Card 3: Portfolio value */}
-        <div className="bg-white p-6 rounded-2xl border border-[#eae7de] card-shadow card-hover-shadow relative group">
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-[#e6f4f1] text-[#0e7490] flex items-center justify-center">
-              <DollarSign className="w-5 h-5" />
-            </div>
-            <ArrowUpRight className="w-4 h-4 text-[#a3b2ac] group-hover:text-[#1c372e] transition-colors" />
-          </div>
-          <p className="text-xs font-semibold text-[#73827d] mt-4 uppercase tracking-wider">Portfolio value</p>
-          <h3 className="font-heading text-3xl font-extrabold text-[#1c2826] mt-1">{formatCurrency(portfolioValue)}</h3>
-          <p className="text-xs text-[#73827d] mt-1 font-medium">Across active inventory</p>
-        </div>
-
-        {/* Card 4: Needs attention */}
-        <div className="bg-white p-6 rounded-2xl border border-[#eae7de] card-shadow card-hover-shadow relative group">
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-[#fee2e2] text-[#b91c1c] flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <ArrowUpRight className="w-4 h-4 text-[#a3b2ac] group-hover:text-[#1c372e] transition-colors" />
-          </div>
-          <p className="text-xs font-semibold text-[#73827d] mt-4 uppercase tracking-wider">Needs attention</p>
-          <h3 className="font-heading text-3xl font-extrabold text-[#1c2826] mt-1">{needsAttention}</h3>
-          <p className="text-xs text-[#73827d] mt-1 font-medium">In maintenance queue</p>
+          {canSubmitRequest && (
+            <button
+              onClick={onAddRequestClick}
+              className="inline-flex items-center px-4 py-2.5 rounded-xl bg-[#f4c453] text-[#1c372e] text-sm font-bold shadow-md hover:bg-[#d9a920] transition-all transform active:scale-95 shrink-0"
+            >
+              <Plus className="w-4 h-4 mr-2 text-[#1c372e]" />
+              <span>{isEmployeeView ? 'New request' : 'Add request'}</span>
+            </button>
+          )}
         </div>
       </div>
+
+      {isEmployeeView ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="bg-white p-6 rounded-2xl border border-[#eae7de] card-shadow">
+            <p className="text-[10px] font-mono font-bold uppercase text-[#788883]">My profile</p>
+            <h3 className="font-heading text-2xl font-extrabold mt-2 text-[#1c2826]">{currentUser?.name || 'Employee'}</h3>
+            <p className="text-sm text-[#61716c] mt-2">{currentUser?.department || 'Operations'} · {currentUser?.role || 'Employee'}</p>
+          </div>
+          <div className="bg-white p-6 rounded-2xl border border-[#eae7de] card-shadow">
+            <p className="text-[10px] font-mono font-bold uppercase text-[#788883]">My requests</p>
+            <h3 className="font-heading text-2xl font-extrabold mt-2 text-[#1c2826]">{stats?.myRequestCount ?? 0}</h3>
+            <p className="text-sm text-[#61716c] mt-2">Current request activity</p>
+          </div>
+          <div className="bg-white p-6 rounded-2xl border border-[#eae7de] card-shadow">
+            <p className="text-[10px] font-mono font-bold uppercase text-[#788883]">Status</p>
+            <h3 className="font-heading text-2xl font-extrabold mt-2 text-[#1c2826]">{stats?.myApprovalStatus || 'In review'}</h3>
+            <p className="text-sm text-[#61716c] mt-2">Your latest request status</p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {/* Card 1: Total assets */}
+          <div className="bg-white p-6 rounded-2xl border border-[#eae7de] card-shadow card-hover-shadow relative group">
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-xl bg-[#e3efe9] text-[#1c372e] flex items-center justify-center">
+                <Boxes className="w-5 h-5" />
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-[#a3b2ac] group-hover:text-[#1c372e] transition-colors" />
+            </div>
+            <p className="text-xs font-semibold text-[#73827d] mt-4 uppercase tracking-wider">Total assets</p>
+            <h3 className="font-heading text-3xl font-extrabold text-[#1c2826] mt-1">{totalAssets}</h3>
+            <p className="text-xs text-[#73827d] mt-1 font-medium">{availableAssets} available now</p>
+          </div>
+
+          {/* Card 2: Utilization rate */}
+          <div className="bg-white p-6 rounded-2xl border border-[#eae7de] card-shadow card-hover-shadow relative group">
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-xl bg-[#fef5db] text-[#b88c1c] flex items-center justify-center">
+                <Gauge className="w-5 h-5" />
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-[#a3b2ac] group-hover:text-[#1c372e] transition-colors" />
+            </div>
+            <p className="text-xs font-semibold text-[#73827d] mt-4 uppercase tracking-wider">Utilization rate</p>
+            <h3 className="font-heading text-3xl font-extrabold text-[#1c2826] mt-1">{utilizationRate}%</h3>
+            <p className="text-xs text-[#73827d] mt-1 font-medium">{assignedCount} currently assigned</p>
+          </div>
+
+          {/* Card 3: Portfolio value */}
+          <div className="bg-white p-6 rounded-2xl border border-[#eae7de] card-shadow card-hover-shadow relative group">
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-xl bg-[#e6f4f1] text-[#0e7490] flex items-center justify-center">
+                <DollarSign className="w-5 h-5" />
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-[#a3b2ac] group-hover:text-[#1c372e] transition-colors" />
+            </div>
+            <p className="text-xs font-semibold text-[#73827d] mt-4 uppercase tracking-wider">Portfolio value</p>
+            <h3 className="font-heading text-3xl font-extrabold text-[#1c2826] mt-1">{formatCurrency(portfolioValue)}</h3>
+            <p className="text-xs text-[#73827d] mt-1 font-medium">Across active inventory</p>
+          </div>
+
+          {/* Card 4: Needs attention */}
+          <div className="bg-white p-6 rounded-2xl border border-[#eae7de] card-shadow card-hover-shadow relative group">
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-xl bg-[#fee2e2] text-[#b91c1c] flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-[#a3b2ac] group-hover:text-[#1c372e] transition-colors" />
+            </div>
+            <p className="text-xs font-semibold text-[#73827d] mt-4 uppercase tracking-wider">Needs attention</p>
+            <h3 className="font-heading text-3xl font-extrabold text-[#1c2826] mt-1">{needsAttention}</h3>
+            <p className="text-xs text-[#73827d] mt-1 font-medium">In maintenance queue</p>
+          </div>
+        </div>
+      )}
 
       {/* Two Column Section: Portfolio Mix & Activity Trail */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
+
         {/* Portfolio Mix */}
         <div className="bg-white p-6 rounded-2xl border border-[#eae7de] card-shadow flex flex-col justify-between">
           <div>

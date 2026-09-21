@@ -129,9 +129,8 @@ export default function MaintenancePage() {
             </div>
 
             <div className="flex flex-col items-end space-y-2 shrink-0">
-              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                tkt.status === 'RESOLVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-              }`}>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${tkt.status === 'RESOLVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                }`}>
                 {tkt.status}
               </span>
 

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Search, Plus, Filter, MoreHorizontal, Laptop, Armchair, Monitor, ShieldCheck, UserPlus, Trash2, Edit3, ArrowRightLeft } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Search, Plus, Filter, MoreHorizontal, Laptop, Armchair, Monitor, ShieldCheck, UserPlus, Trash2, Edit3, ArrowRightLeft, History } from 'lucide-react';
+import { api } from '../api';
 
 export default function AssetInventoryPage({
   assets,
@@ -16,13 +17,12 @@ export default function AssetInventoryPage({
   onDeleteAssetClick
 }) {
   const [activeMenuId, setActiveMenuId] = useState(null);
+  const [selectedAssetId, setSelectedAssetId] = useState(null);
+  const [assetAuditLogs, setAssetAuditLogs] = useState([]);
 
-  const formatCurrency = (val) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
-  };
+  const safeAssets = Array.isArray(assets) ? assets : [];
 
-  // Instant client-side & real-time filtration fix
-  const filteredAssets = assets.filter(asset => {
+  const filteredAssets = safeAssets.filter(asset => {
     const query = (searchTerm || '').toLowerCase().trim();
     const matchesSearch = !query ||
       (asset.name && asset.name.toLowerCase().includes(query)) ||
@@ -39,6 +39,26 @@ export default function AssetInventoryPage({
 
     return matchesSearch && matchesStatus && matchesCategory;
   });
+
+  const selectedAsset = filteredAssets.find((asset) => asset.id === selectedAssetId) || null;
+
+  useEffect(() => {
+    if (!selectedAssetId) {
+      setAssetAuditLogs([]);
+      return;
+    }
+
+    const loadAuditLogs = async () => {
+      const logs = await api.getAssetAuditLogs(selectedAssetId);
+      setAssetAuditLogs(logs || []);
+    };
+
+    loadAuditLogs();
+  }, [selectedAssetId]);
+
+  const formatCurrency = (val) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
+  };
 
   const getStatusBadge = (status) => {
     switch (status?.toLowerCase()) {
@@ -276,6 +296,17 @@ export default function AssetInventoryPage({
 
                               <button
                                 onClick={() => {
+                                  setSelectedAssetId(asset.id);
+                                  setActiveMenuId(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-xs font-bold text-[#1c372e] hover:bg-[#f5f3ec] flex items-center"
+                              >
+                                <History className="w-3.5 h-3.5 mr-2 text-[#0e7490]" />
+                                View Audit History
+                              </button>
+
+                              <button
+                                onClick={() => {
                                   onEditAssetClick(asset);
                                   setActiveMenuId(null);
                                 }}
@@ -309,6 +340,81 @@ export default function AssetInventoryPage({
           </table>
         </div>
       </div>
+
+      {selectedAssetId && (
+        <div className="bg-white rounded-2xl border border-[#eae7de] card-shadow overflow-hidden">
+          <div className="px-6 py-4 border-b border-[#f0eee6] bg-[#fcfbf7] flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-mono font-bold tracking-widest text-[#788883] uppercase">ASSET HISTORY</p>
+              <h3 className="font-heading text-lg font-extrabold text-[#1c2826] mt-1">
+                Audit Logs for {selectedAsset?.assetTag || 'selected asset'}
+              </h3>
+            </div>
+            <button
+              onClick={() => setSelectedAssetId(null)}
+              className="text-xs font-bold text-[#1c372e] hover:text-[#0f1d1a]"
+            >
+              Close
+            </button>
+          </div>
+
+          {selectedAsset && (
+            <div className="px-6 py-4 border-b border-[#f0eee6] bg-[#f9f8f3] grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#788883]">Asset</p>
+                <p className="mt-1 text-sm font-bold text-[#1c2826]">{selectedAsset.name}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#788883]">Tag</p>
+                <p className="mt-1 text-sm font-bold text-[#1c2826]">{selectedAsset.assetTag}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#788883]">Status</p>
+                <p className="mt-1 text-sm font-bold text-[#1c2826]">{selectedAsset.status}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#788883]">Location</p>
+                <p className="mt-1 text-sm font-bold text-[#1c2826]">{selectedAsset.location || 'N/A'}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="border-b border-[#f0eee6] text-[11px] font-mono font-bold tracking-wider text-[#73827d] uppercase bg-[#faf9f4]">
+                  <th className="py-3.5 px-6">Action</th>
+                  <th className="py-3.5 px-4">Description</th>
+                  <th className="py-3.5 px-4">Performed By</th>
+                  <th className="py-3.5 px-4">Date / Time</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f5f3eb]">
+                {assetAuditLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="py-10 px-6 text-center text-sm text-[#61716c]">
+                      No audit history available for this asset.
+                    </td>
+                  </tr>
+                ) : (
+                  assetAuditLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-[#fcfbf7] transition-colors">
+                      <td className="py-4 px-6">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-[#1c372e] text-[#f4c453]">
+                          {log.actionType || 'ASSET_EVENT'}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-[#475752]">{log.description || 'Asset event recorded.'}</td>
+                      <td className="py-4 px-4 text-sm font-semibold text-[#1c2826]">{log.performedBy || 'System'}</td>
+                      <td className="py-4 px-4 font-mono text-[11px] text-[#61716c]">{log.createdAt || 'N/A'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

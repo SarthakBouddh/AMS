@@ -162,11 +162,10 @@ export default function ResourceBookingPage() {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 border transition-all ${
-                selectedCategory === cat
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 border transition-all ${selectedCategory === cat
                   ? 'bg-[#1c372e] text-white border-[#1c372e]'
                   : 'bg-[#fcfbf7] text-[#556661] border-[#e2ded2] hover:bg-[#f0eee6]'
-              }`}
+                }`}
             >
               {cat.replace('_', ' ')}
             </button>
@@ -183,9 +182,8 @@ export default function ResourceBookingPage() {
                 <div className="p-2.5 rounded-xl bg-[#f4f2ea] border border-[#e2ded2]">
                   {getCategoryIcon(res.type)}
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
-                  res.status === 'AVAILABLE' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200'
-                }`}>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${res.status === 'AVAILABLE' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200'
+                  }`}>
                   {res.status}
                 </span>
               </div>
