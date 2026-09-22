@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import LoginPage from './components/LoginPage';
@@ -19,6 +20,27 @@ import AssignModal from './components/AssignModal';
 import { api } from './api';
 import { INITIAL_ASSETS, INITIAL_EMPLOYEES, INITIAL_ACTIVITIES } from './initialData';
 
+const TAB_TO_ROUTE = {
+  overview: '/overview',
+  assets: '/assets',
+  people: '/people',
+  resources: '/resources',
+  requests: '/requests',
+  maintenance: '/maintenance',
+  warranty: '/warranty',
+  audit: '/audit',
+  reports: '/reports',
+  superadmin: '/superadmin',
+};
+
+const ROUTE_ALIASES = {
+  '/asset': '/assets',
+};
+
+const ROUTE_TO_TAB = Object.fromEntries(
+  Object.entries(TAB_TO_ROUTE).map(([tab, route]) => [route, tab])
+);
+
 export default function App() {
   // Auth state
   const [currentUser, setCurrentUser] = useState(() => {
@@ -26,8 +48,26 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
+  const isEmployeeRole = (role = '') => {
+    const normalizedRole = (role || '').toLowerCase();
+    return normalizedRole.includes('employee')
+      || normalizedRole.includes('engineer')
+      || normalizedRole.includes('developer')
+      || normalizedRole.includes('support')
+      || normalizedRole.includes('operations');
+  };
+
+  const location = useLocation();
+  const navigate = useNavigate();
+  const normalizedPath = ROUTE_ALIASES[location.pathname] || location.pathname;
+
   // Navigation tab state: 'superadmin' | 'overview' | 'assets' | 'people' | 'resources' | 'requests' | 'maintenance' | 'warranty' | 'audit' | 'reports'
-  const [activeTab, setActiveTab] = useState('overview');
+  const activeTab = ROUTE_TO_TAB[normalizedPath] || 'overview';
+
+  const setActiveTab = (tab) => {
+    const route = TAB_TO_ROUTE[tab] || '/overview';
+    navigate(route);
+  };
 
   // Core Data
   const [assets, setAssets] = useState(INITIAL_ASSETS);
@@ -71,14 +111,33 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (currentUser) {
-      if (currentUser.superAdmin) {
-        setActiveTab('superadmin');
-      } else {
-        loadData();
-      }
+    if (!currentUser) return;
+
+    if (location.pathname === '/asset') {
+      navigate('/assets', { replace: true });
+      return;
     }
-  }, [currentUser, searchTerm, statusFilter, categoryFilter, peopleSearch]);
+
+    if (currentUser.superAdmin) {
+      if (location.pathname !== '/superadmin') {
+        navigate('/superadmin', { replace: true });
+      }
+      return;
+    }
+
+    const protectedEmployeeRoutes = ['/assets', '/people', '/resources', '/maintenance', '/warranty', '/audit', '/reports'];
+    if (isEmployeeRole(currentUser.role) && protectedEmployeeRoutes.includes(location.pathname)) {
+      navigate('/overview', { replace: true });
+      return;
+    }
+
+    if (!location.pathname || location.pathname === '/' || location.pathname === '/login') {
+      navigate('/overview', { replace: true });
+      return;
+    }
+
+    loadData();
+  }, [currentUser, location.pathname, searchTerm, statusFilter, categoryFilter, peopleSearch]);
 
   const handleLoginSuccess = (userResponse) => {
     const userData = {
@@ -96,31 +155,33 @@ export default function App() {
     localStorage.setItem('ams_user', JSON.stringify(userData));
 
     if (userData.superAdmin) {
-      setActiveTab('superadmin');
+      navigate('/superadmin', { replace: true });
     } else {
-      setActiveTab('overview');
+      navigate('/overview', { replace: true });
     }
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('ams_user');
+    navigate('/');
   };
 
   // Asset Handlers
   const handleSaveAsset = async (assetData) => {
     const userName = currentUser?.name || 'Mara Singh';
     const tenantId = currentUser?.companyId || 'comp-northstar';
+    const userId = currentUser?.id || null;
 
     if (editingAsset) {
-      const updated = await api.updateAsset(editingAsset.id, { ...assetData, companyId: tenantId }, userName);
+      const updated = await api.updateAsset(editingAsset.id, { ...assetData, companyId: tenantId }, userName, userId);
       if (updated) {
         setAssets(prev => prev.map(a => a.id === updated.id ? updated : a));
       } else {
         setAssets(prev => prev.map(a => a.id === editingAsset.id ? { ...a, ...assetData } : a));
       }
     } else {
-      const created = await api.createAsset({ ...assetData, companyId: tenantId }, userName, tenantId);
+      const created = await api.createAsset({ ...assetData, companyId: tenantId }, userName, tenantId, userId);
       if (created) {
         setAssets(prev => [created, ...prev]);
       } else {
@@ -138,8 +199,9 @@ export default function App() {
 
   const handleAssignAssetConfirm = async (assetId, employeeId) => {
     const userName = currentUser?.name || 'Mara Singh';
-    const updated = await api.assignAsset(assetId, employeeId, userName);
-    
+    const userId = currentUser?.id || null;
+    const updated = await api.assignAsset(assetId, employeeId, userName, userId);
+
     let empName = 'Unassigned';
     let newStatus = 'Available';
 
@@ -172,7 +234,8 @@ export default function App() {
   const handleDeleteAsset = async (assetId) => {
     if (!window.confirm('Are you sure you want to remove this asset?')) return;
     const userName = currentUser?.name || 'Mara Singh';
-    await api.deleteAsset(assetId, userName);
+    const userId = currentUser?.id || null;
+    await api.deleteAsset(assetId, userName, userId);
     setAssets(prev => prev.filter(a => a.id !== assetId));
     loadData();
   };
@@ -247,46 +310,40 @@ export default function App() {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
- return (
-  <div className="flex h-screen w-full overflow-hidden bg-[#f9f8f3] text-[#1c2826] font-sans antialiased">
-
-    {/* SIDEBAR - STATIC */}
-    <div className="h-screen flex-shrink-0">
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        user={currentUser}
-        onLogout={handleLogout}
-      />
-    </div>
-
-    {/* RIGHT SIDE */}
-    <div className="flex h-screen min-w-0 flex-1 flex-col overflow-hidden">
-
-      {/* NAVBAR - STATIC */}
-      <div className="flex-shrink-0">
-        <Navbar user={currentUser} />
+  return (
+    <div className="flex h-screen w-full overflow-hidden bg-[#f9f8f3] text-[#1c2826] font-sans antialiased">
+      <div className="h-screen flex-shrink-0">
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          user={currentUser}
+          onLogout={handleLogout}
+        />
       </div>
 
-      {/* ONLY DASHBOARD CONTENT SCROLLS */}
-      <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-16">
+      <div className="flex h-screen min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="flex-shrink-0">
+          <Navbar user={currentUser} />
+        </div>
 
-        {currentUser.superAdmin ? (
-          <SuperAdminPortal />
-        ) : (
-          <>
-            {activeTab === 'overview' && (
+        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-16">
+          <Routes>
+            <Route path="/" element={<Navigate to="/overview" replace />} />
+            <Route path="/superadmin" element={<SuperAdminPortal />} />
+            <Route path="/overview" element={
               <OverviewPage
                 stats={computedStats()}
+                currentUser={currentUser}
                 onAddAssetClick={() => {
                   setEditingAsset(null);
                   setIsAssetModalOpen(true);
                 }}
+                onAddRequestClick={() => setActiveTab('requests')}
                 onViewInventoryClick={() => setActiveTab('assets')}
               />
-            )}
-
-            {activeTab === 'assets' && (
+            } />
+            <Route path="/asset" element={<Navigate to="/assets" replace />} />
+            <Route path="/assets" element={
               <AssetInventoryPage
                 assets={assets}
                 employees={employees}
@@ -310,9 +367,8 @@ export default function App() {
                 }}
                 onDeleteAssetClick={handleDeleteAsset}
               />
-            )}
-
-            {activeTab === 'people' && (
+            } />
+            <Route path="/people" element={
               <PeopleDirectoryPage
                 employees={employees}
                 assets={assets}
@@ -328,55 +384,49 @@ export default function App() {
                 }}
                 onDeletePersonClick={handleDeletePerson}
               />
-            )}
+            } />
+            <Route path="/resources" element={<ResourceBookingPage />} />
+            <Route path="/requests" element={<RequestsPage currentUser={currentUser} assets={assets} />} />
+            <Route path="/maintenance" element={<MaintenancePage />} />
+            <Route path="/warranty" element={<WarrantyPage assets={assets} />} />
+            <Route path="/audit" element={<AuditTrailPage currentUser={currentUser} />} />
+            <Route path="/reports" element={<ReportsPage assets={assets} stats={computedStats()} />} />
+            <Route path="*" element={<Navigate to={currentUser?.superAdmin ? '/superadmin' : '/overview'} replace />} />
+          </Routes>
+        </main>
+      </div>
 
-            {activeTab === 'resources' && <ResourceBookingPage />}
-            {activeTab === 'requests' && <RequestsPage />}
-            {activeTab === 'maintenance' && <MaintenancePage />}
-            {activeTab === 'warranty' && <WarrantyPage assets={assets} />}
-            {activeTab === 'audit' && <AuditTrailPage />}
-            {activeTab === 'reports' && (
-              <ReportsPage assets={assets} stats={computedStats()} />
-            )}
-          </>
-        )}
+      <AddAssetModal
+        isOpen={isAssetModalOpen}
+        onClose={() => {
+          setIsAssetModalOpen(false);
+          setEditingAsset(null);
+        }}
+        onSave={handleSaveAsset}
+        editingAsset={editingAsset}
+        employees={employees}
+      />
 
-      </main>
+      <AddPersonModal
+        isOpen={isPersonModalOpen}
+        onClose={() => {
+          setIsPersonModalOpen(false);
+          setEditingPerson(null);
+        }}
+        onSave={handleSavePerson}
+        editingPerson={editingPerson}
+      />
+
+      <AssignModal
+        isOpen={isAssignModalOpen}
+        onClose={() => {
+          setIsAssignModalOpen(false);
+          setAssigningAsset(null);
+        }}
+        asset={assigningAsset}
+        employees={employees}
+        onAssignConfirm={handleAssignAssetConfirm}
+      />
     </div>
-
-    {/* MODALS */}
-    <AddAssetModal
-      isOpen={isAssetModalOpen}
-      onClose={() => {
-        setIsAssetModalOpen(false);
-        setEditingAsset(null);
-      }}
-      onSave={handleSaveAsset}
-      editingAsset={editingAsset}
-      employees={employees}
-    />
-
-    <AddPersonModal
-      isOpen={isPersonModalOpen}
-      onClose={() => {
-        setIsPersonModalOpen(false);
-        setEditingPerson(null);
-      }}
-      onSave={handleSavePerson}
-      editingPerson={editingPerson}
-    />
-
-    <AssignModal
-      isOpen={isAssignModalOpen}
-      onClose={() => {
-        setIsAssignModalOpen(false);
-        setAssigningAsset(null);
-      }}
-      asset={assigningAsset}
-      employees={employees}
-      onAssignConfirm={handleAssignAssetConfirm}
-    />
-
-  </div>
-);
+  );
 }

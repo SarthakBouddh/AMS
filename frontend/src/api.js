@@ -158,11 +158,12 @@ export const api = {
     return null;
   },
 
-  createAsset: async (assetData, currentUser, companyId) => {
+  createAsset: async (assetData, currentUser, companyId, userId = null) => {
     try {
       const params = new URLSearchParams();
       params.append('currentUser', currentUser);
       if (companyId) params.append('companyId', companyId);
+      if (userId) params.append('userId', userId);
 
       const res = await fetch(`${API_BASE_URL}/assets?${params.toString()}`, {
         method: 'POST',
@@ -176,9 +177,12 @@ export const api = {
     return null;
   },
 
-  updateAsset: async (id, assetData, currentUser) => {
+  updateAsset: async (id, assetData, currentUser, userId = null) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/assets/${id}?currentUser=${encodeURIComponent(currentUser)}`, {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+      if (userId) params.append('userId', userId);
+      const res = await fetch(`${API_BASE_URL}/assets/${id}?${params.toString()}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(assetData),
@@ -190,9 +194,12 @@ export const api = {
     return null;
   },
 
-  assignAsset: async (id, employeeId, currentUser) => {
+  assignAsset: async (id, employeeId, currentUser, userId = null) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/assets/${id}/assign?currentUser=${encodeURIComponent(currentUser)}`, {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+      if (userId) params.append('userId', userId);
+      const res = await fetch(`${API_BASE_URL}/assets/${id}/assign?${params.toString()}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ employeeId }),
@@ -204,9 +211,12 @@ export const api = {
     return null;
   },
 
-  deleteAsset: async (id, currentUser) => {
+  deleteAsset: async (id, currentUser, userId = null) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/assets/${id}?currentUser=${encodeURIComponent(currentUser)}`, {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+      if (userId) params.append('userId', userId);
+      const res = await fetch(`${API_BASE_URL}/assets/${id}?${params.toString()}`, {
         method: 'DELETE',
       });
       return res.ok;
@@ -214,6 +224,28 @@ export const api = {
       console.error('API Error:', e);
     }
     return false;
+  },
+
+  getAssetAuditLogs: async (assetId) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/assets/${assetId}/audit-logs`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return [];
+  },
+
+  getAuditLogs: async (companyId = '') => {
+    try {
+      const params = new URLSearchParams();
+      if (companyId) params.append('companyId', companyId);
+      const res = await fetch(`${API_BASE_URL}/audit-logs?${params.toString()}`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return [];
   },
 
   // Employees (Tenant Aware)
@@ -273,6 +305,103 @@ export const api = {
       console.error('API Error:', e);
     }
     return false;
+  },
+
+  // Requests & Approvals
+  getRequests: async (companyId = '') => {
+    try {
+      const params = new URLSearchParams();
+      if (companyId) params.append('companyId', companyId);
+      const res = await fetch(`${API_BASE_URL}/requests?${params.toString()}`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend offline');
+    }
+    return null;
+  },
+
+  createRequest: async (requestData, currentUser, companyId) => {
+    try {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser || 'Employee');
+      if (companyId) params.append('companyId', companyId);
+
+      const res = await fetch(`${API_BASE_URL}/requests?${params.toString()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData),
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
+  approveManager: async (id, currentUser) => {
+    try {
+      const user = typeof currentUser === 'object' ? currentUser : { name: currentUser || 'Manager', role: 'Manager', id: '' };
+      const params = new URLSearchParams();
+      params.append('currentUser', user.name || 'Manager');
+      if (user.id) params.append('userId', user.id);
+      if (user.role) params.append('currentUserRole', user.role);
+
+      const res = await fetch(`${API_BASE_URL}/requests/${id}/approve-manager?${params.toString()}`, {
+        method: 'PUT',
+      });
+
+      if (res.ok) return await res.json();
+
+      const errorText = await res.text();
+      return { error: true, message: errorText || 'You are not allowed to approve this request.' };
+    } catch (e) {
+      console.error('API Error:', e);
+      return { error: true, message: 'Approval request failed. Please try again.' };
+    }
+  },
+
+  rejectManager: async (id, currentUser) => {
+    try {
+      const user = typeof currentUser === 'object' ? currentUser : { name: currentUser || 'Manager', role: 'Manager', id: '' };
+      const params = new URLSearchParams();
+      params.append('currentUser', user.name || 'Manager');
+      if (user.id) params.append('userId', user.id);
+      if (user.role) params.append('currentUserRole', user.role);
+
+      const res = await fetch(`${API_BASE_URL}/requests/${id}/reject-manager?${params.toString()}`, {
+        method: 'PUT',
+      });
+
+      if (res.ok) return await res.json();
+
+      const errorText = await res.text();
+      return { error: true, message: errorText || 'You are not allowed to reject this request.' };
+    } catch (e) {
+      console.error('API Error:', e);
+      return { error: true, message: 'Rejection request failed. Please try again.' };
+    }
+  },
+
+  allocateAdmin: async (id, currentUser) => {
+    try {
+      const user = typeof currentUser === 'object' ? currentUser : { name: currentUser || 'Admin', role: 'Admin', id: '' };
+      const params = new URLSearchParams();
+      params.append('currentUser', user.name || 'Admin');
+      if (user.id) params.append('userId', user.id);
+      if (user.role) params.append('currentUserRole', user.role);
+
+      const res = await fetch(`${API_BASE_URL}/requests/${id}/allocate-admin?${params.toString()}`, {
+        method: 'PUT',
+      });
+
+      if (res.ok) return await res.json();
+
+      const errorText = await res.text();
+      return { error: true, message: errorText || 'You are not allowed to allocate this request.' };
+    } catch (e) {
+      console.error('API Error:', e);
+      return { error: true, message: 'Allocation request failed. Please try again.' };
+    }
   },
 
   // Dashboard Stats (Tenant Aware)
