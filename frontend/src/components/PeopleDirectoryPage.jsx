@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Plus, Mail, UserCheck, Edit3, Trash2, Box, Building2 } from 'lucide-react';
+import { Search, Plus, Mail, UserCheck, Edit3, Trash2, Box, Building2, Upload, RotateCcw, PackageCheck } from 'lucide-react';
 
 export default function PeopleDirectoryPage({
   employees,
@@ -8,7 +8,9 @@ export default function PeopleDirectoryPage({
   setSearchTerm,
   onAddPersonClick,
   onEditPersonClick,
-  onDeletePersonClick
+  onDeletePersonClick,
+  onBulkUploadClick,
+  onCollectAssetClick
 }) {
   const getDepartmentBadgeClass = (dept) => {
     switch (dept?.toLowerCase()) {
@@ -58,13 +60,25 @@ export default function PeopleDirectoryPage({
           </p>
         </div>
 
-        <button
-          onClick={onAddPersonClick}
-          className="inline-flex items-center px-4 py-2.5 rounded-xl bg-[#1c372e] text-white text-sm font-bold shadow-md hover:bg-[#142a23] transition-all transform active:scale-95 shrink-0"
-        >
-          <Plus className="w-4 h-4 mr-2 text-[#f4c453]" />
-          <span>Add person</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          {onBulkUploadClick && (
+            <button
+              onClick={onBulkUploadClick}
+              className="inline-flex items-center px-4 py-2.5 rounded-xl bg-[#e3efe9] text-[#1c372e] text-sm font-bold hover:bg-[#d5e7df] transition-all shrink-0"
+            >
+              <Upload className="w-4 h-4 mr-2 text-[#1c372e]" />
+              <span>Bulk Upload</span>
+            </button>
+          )}
+
+          <button
+            onClick={onAddPersonClick}
+            className="inline-flex items-center px-4 py-2.5 rounded-xl bg-[#1c372e] text-white text-sm font-bold shadow-md hover:bg-[#142a23] transition-all transform active:scale-95 shrink-0"
+          >
+            <Plus className="w-4 h-4 mr-2 text-[#f4c453]" />
+            <span>Add person</span>
+          </button>
+        </div>
       </div>
 
       {/* Search Input Bar */}
@@ -155,14 +169,23 @@ export default function PeopleDirectoryPage({
                       {/* Assigned Assets */}
                       <td className="py-4 px-4">
                         {assignedAssets.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-wrap gap-1.5">
                             {assignedAssets.map((ast) => (
                               <span
                                 key={ast.id}
-                                className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-[#f4f2ea] text-[#2c3d38] border border-[#e2ded2]"
+                                className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-[#f4f2ea] text-[#2c3d38] border border-[#e2ded2] group/badge"
                               >
                                 <Box className="w-3 h-3 mr-1 text-[#1c372e]" />
-                                {ast.name}
+                                <span>{ast.name}</span>
+                                {onCollectAssetClick && (
+                                  <button
+                                    onClick={() => onCollectAssetClick(ast, person)}
+                                    title={`Collect ${ast.name} back to inventory`}
+                                    className="ml-1.5 p-0.5 rounded hover:bg-amber-200 text-[#1c372e] transition-colors"
+                                  >
+                                    <RotateCcw className="w-3 h-3 text-amber-900" />
+                                  </button>
+                                )}
                               </span>
                             ))}
                           </div>
@@ -182,6 +205,16 @@ export default function PeopleDirectoryPage({
                       {/* Actions */}
                       <td className="py-4 px-4 text-right">
                         <div className="flex items-center justify-end space-x-1">
+                          {assignedAssets.length > 0 && onCollectAssetClick && (
+                            <button
+                              onClick={() => onCollectAssetClick(assignedAssets[0], person)}
+                              title="Collect asset back to inventory"
+                              className="p-1.5 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors mr-1 flex items-center gap-1 text-[11px] font-bold px-2"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>Collect</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => onEditPersonClick(person)}
                             title="Edit person"

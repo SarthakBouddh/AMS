@@ -48,6 +48,32 @@ public class ResourceController {
         return ResponseEntity.ok(saved);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<Resource> updateResource(
+            @PathVariable String id,
+            @RequestBody Resource updated,
+            @RequestParam(defaultValue = "Admin") String currentUser) {
+
+        return resourceService.getResourceById(id).map(existing -> {
+            if (updated.getName() != null) existing.setName(updated.getName());
+            if (updated.getType() != null) existing.setType(updated.getType());
+            if (updated.getLocation() != null) existing.setLocation(updated.getLocation());
+            if (updated.getCapacityInfo() != null) existing.setCapacityInfo(updated.getCapacityInfo());
+            if (updated.getStatus() != null) existing.setStatus(updated.getStatus());
+            if (updated.getSpecifications() != null) existing.setSpecifications(updated.getSpecifications());
+
+            Resource saved = resourceService.saveResource(existing);
+            activityLogService.logActivity(
+                    "Updated shared resource: " + saved.getName(),
+                    "RESOURCE",
+                    currentUser,
+                    "UPDATE_RESOURCE",
+                    saved.getCompanyId()
+            );
+            return ResponseEntity.ok(saved);
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteResource(@PathVariable String id) {
         boolean deleted = resourceService.deleteResource(id);
@@ -78,5 +104,25 @@ public class ResourceController {
                 saved.getCompanyId()
         );
         return ResponseEntity.ok(saved);
+    }
+
+    @PutMapping("/bookings/{id}/free")
+    public ResponseEntity<ResourceBooking> freeBooking(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "Employee") String currentUser) {
+
+        ResourceBooking freed = resourceService.freeBooking(id);
+        if (freed == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        activityLogService.logActivity(
+                "Freed booked resource: " + freed.getResourceName(),
+                "BOOKING",
+                currentUser,
+                "FREE_RESOURCE",
+                freed.getCompanyId()
+        );
+        return ResponseEntity.ok(freed);
     }
 }

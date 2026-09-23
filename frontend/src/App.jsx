@@ -12,10 +12,14 @@ import MaintenancePage from './components/MaintenancePage';
 import WarrantyPage from './components/WarrantyPage';
 import AuditTrailPage from './components/AuditTrailPage';
 import ReportsPage from './components/ReportsPage';
+import VendorsPage from './components/VendorsPage';
 import SuperAdminPortal from './components/SuperAdminPortal';
+import CompanyCredentialsPage from './components/CompanyCredentialsPage';
 import AddAssetModal from './components/AddAssetModal';
 import AddPersonModal from './components/AddPersonModal';
 import AssignModal from './components/AssignModal';
+import BulkUploadModal from './components/BulkUploadModal';
+import CollectAssetModal from './components/CollectAssetModal';
 
 import { api } from './api';
 import { INITIAL_ASSETS, INITIAL_EMPLOYEES, INITIAL_ACTIVITIES } from './initialData';
@@ -24,10 +28,12 @@ const TAB_TO_ROUTE = {
   overview: '/overview',
   assets: '/assets',
   people: '/people',
+  credentials: '/credentials',
   resources: '/resources',
   requests: '/requests',
   maintenance: '/maintenance',
   warranty: '/warranty',
+  vendors: '/vendors',
   audit: '/audit',
   reports: '/reports',
   superadmin: '/superadmin',
@@ -72,6 +78,7 @@ export default function App() {
   // Core Data
   const [assets, setAssets] = useState(INITIAL_ASSETS);
   const [employees, setEmployees] = useState(INITIAL_EMPLOYEES);
+  const [vendors, setVendors] = useState([]);
   const [activities, setActivities] = useState(INITIAL_ACTIVITIES);
   const [dashboardStats, setDashboardStats] = useState(null);
 
@@ -91,6 +98,11 @@ export default function App() {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assigningAsset, setAssigningAsset] = useState(null);
 
+  const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
+  const [bulkUploadType, setBulkUploadType] = useState('ASSETS');
+
+  const [collectModalState, setCollectModalState] = useState({ isOpen: false, asset: null, person: null });
+
   // Load backend data scoped to logged-in user's tenant company
   const loadData = async () => {
     if (!currentUser || currentUser.superAdmin) return;
@@ -103,11 +115,26 @@ export default function App() {
       const empData = await api.getEmployees(peopleSearch, tenantId);
       if (empData) setEmployees(empData);
 
+      const vendorsData = await api.getVendors('', '', tenantId);
+      if (vendorsData) setVendors(vendorsData);
+
       const statsData = await api.getDashboardStats(tenantId);
       if (statsData) setDashboardStats(statsData);
     } catch (e) {
       console.warn('API sync issue, using local state fallback');
     }
+  };
+
+  const isUserAdmin = (user) => {
+    if (!user) return false;
+    if (user.superAdmin) return true;
+    const role = (user.role || '').toLowerCase();
+    return (
+      role.includes('admin') ||
+      role.includes('director') ||
+      role.includes('head') ||
+      role.includes('operations')
+    );
   };
 
   useEffect(() => {
@@ -125,14 +152,16 @@ export default function App() {
       return;
     }
 
-    const protectedEmployeeRoutes = ['/assets', '/people', '/resources', '/maintenance', '/warranty', '/audit', '/reports'];
-    if (isEmployeeRole(currentUser.role) && protectedEmployeeRoutes.includes(location.pathname)) {
-      navigate('/overview', { replace: true });
+    const isAdmin = isUserAdmin(currentUser);
+    const adminOnlyRoutes = ['/overview', '/assets', '/people', '/maintenance', '/warranty', '/vendors', '/audit', '/reports'];
+
+    if (!isAdmin && adminOnlyRoutes.includes(location.pathname)) {
+      navigate('/requests', { replace: true });
       return;
     }
 
     if (!location.pathname || location.pathname === '/' || location.pathname === '/login') {
-      navigate('/overview', { replace: true });
+      navigate(isAdmin ? '/overview' : '/requests', { replace: true });
       return;
     }
 
@@ -156,8 +185,10 @@ export default function App() {
 
     if (userData.superAdmin) {
       navigate('/superadmin', { replace: true });
-    } else {
+    } else if (isUserAdmin(userData)) {
       navigate('/overview', { replace: true });
+    } else {
+      navigate('/requests', { replace: true });
     }
   };
 
@@ -231,6 +262,36 @@ export default function App() {
     loadData();
   };
 
+  const handleOpenCollectModal = (asset, person = null) => {
+    setCollectModalState({ isOpen: true, asset, person });
+  };
+
+  const handleCollectAssetConfirm = async (assetId, returnDetails) => {
+    const userName = currentUser?.name || 'Mara Singh';
+    const userId = currentUser?.id || null;
+    const updated = await api.collectAsset(assetId, userName, userId, returnDetails);
+
+    if (updated) {
+      setAssets(prev => prev.map(a => a.id === updated.id ? updated : a));
+    } else {
+      setAssets(prev => prev.map(a => {
+        if (a.id === assetId) {
+          return {
+            ...a,
+            ownerId: null,
+            ownerName: 'Unassigned',
+            status: 'Available',
+            condition: returnDetails?.condition || a.condition,
+            notes: returnDetails?.notes ? `${a.notes || ''} [Returned: ${returnDetails.notes}]` : a.notes
+          };
+        }
+        return a;
+      }));
+    }
+    setCollectModalState({ isOpen: false, asset: null, person: null });
+    loadData();
+  };
+
   const handleDeleteAsset = async (assetId) => {
     if (!window.confirm('Are you sure you want to remove this asset?')) return;
     const userName = currentUser?.name || 'Mara Singh';
@@ -270,9 +331,19 @@ export default function App() {
   };
 
   const handleDeletePerson = async (personId) => {
-    if (!window.confirm('Are you sure you want to remove this team member?')) return;
-    await api.deleteEmployee(personId);
+    if (!window.confirm('Are you sure you want to remove this team member? This will automatically collect/unassign all assets assigned to them and revoke their login credentials.')) return;
+    const userName = currentUser?.name || 'Mara Singh';
+    const userId = currentUser?.id || null;
+    const emp = employees.find(e => e.id === personId);
+
+    await api.deleteEmployee(personId, userName, userId);
     setEmployees(prev => prev.filter(e => e.id !== personId));
+    setAssets(prev => prev.map(ast => {
+      if (ast.ownerId === personId || (emp && ast.ownerName === emp.name)) {
+        return { ...ast, ownerId: null, ownerName: 'Unassigned', status: 'Available' };
+      }
+      return ast;
+    }));
     loadData();
   };
 
@@ -365,7 +436,12 @@ export default function App() {
                   setAssigningAsset(asset);
                   setIsAssignModalOpen(true);
                 }}
+                onCollectAssetClick={handleOpenCollectModal}
                 onDeleteAssetClick={handleDeleteAsset}
+                onBulkUploadClick={() => {
+                  setBulkUploadType('ASSETS');
+                  setIsBulkUploadModalOpen(true);
+                }}
               />
             } />
             <Route path="/people" element={
@@ -383,12 +459,19 @@ export default function App() {
                   setIsPersonModalOpen(true);
                 }}
                 onDeletePersonClick={handleDeletePerson}
+                onCollectAssetClick={handleOpenCollectModal}
+                onBulkUploadClick={() => {
+                  setBulkUploadType('PEOPLE');
+                  setIsBulkUploadModalOpen(true);
+                }}
               />
             } />
-            <Route path="/resources" element={<ResourceBookingPage />} />
+            <Route path="/credentials" element={<CompanyCredentialsPage currentUser={currentUser} currentCompanyId={currentUser?.companyId} />} />
+            <Route path="/resources" element={<ResourceBookingPage currentUser={currentUser} companyId={currentUser?.companyId} />} />
             <Route path="/requests" element={<RequestsPage currentUser={currentUser} assets={assets} />} />
-            <Route path="/maintenance" element={<MaintenancePage />} />
+            <Route path="/maintenance" element={<MaintenancePage currentUser={currentUser} companyId={currentUser?.companyId} />} />
             <Route path="/warranty" element={<WarrantyPage assets={assets} />} />
+            <Route path="/vendors" element={<VendorsPage currentUser={currentUser} companyId={currentUser?.companyId} />} />
             <Route path="/audit" element={<AuditTrailPage currentUser={currentUser} />} />
             <Route path="/reports" element={<ReportsPage assets={assets} stats={computedStats()} />} />
             <Route path="*" element={<Navigate to={currentUser?.superAdmin ? '/superadmin' : '/overview'} replace />} />
@@ -405,6 +488,7 @@ export default function App() {
         onSave={handleSaveAsset}
         editingAsset={editingAsset}
         employees={employees}
+        vendors={vendors}
       />
 
       <AddPersonModal
@@ -426,6 +510,23 @@ export default function App() {
         asset={assigningAsset}
         employees={employees}
         onAssignConfirm={handleAssignAssetConfirm}
+      />
+
+      <CollectAssetModal
+        isOpen={collectModalState.isOpen}
+        onClose={() => setCollectModalState({ isOpen: false, asset: null, person: null })}
+        asset={collectModalState.asset}
+        person={collectModalState.person}
+        onCollectConfirm={handleCollectAssetConfirm}
+      />
+
+      <BulkUploadModal
+        isOpen={isBulkUploadModalOpen}
+        onClose={() => setIsBulkUploadModalOpen(false)}
+        type={bulkUploadType}
+        currentUser={currentUser}
+        companyId={currentUser?.companyId}
+        onImportSuccess={() => loadData()}
       />
     </div>
   );

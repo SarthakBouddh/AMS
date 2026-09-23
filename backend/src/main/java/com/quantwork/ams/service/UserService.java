@@ -32,6 +32,10 @@ public class UserService {
         Optional<User> userOpt = userRepository.findByEmailIgnoreCase(email);
         User foundUser = userOpt.orElse(null);
 
+        if (foundUser != null && foundUser.isRevoked()) {
+            return new LoginResponse(false, "Account credentials have been revoked. Contact administrator.", null, null, null, null, null, null, null, null, null, false);
+        }
+
         if (foundUser != null && passwordEncoder.matches(password, foundUser.getPassword())) {
             return new LoginResponse(
                     true,
@@ -123,7 +127,33 @@ public class UserService {
         return userRepository.save(existing);
     }
 
+    public boolean revokeUser(String id) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            user.setRevoked(true);
+            userRepository.save(user);
+            return true;
+        }
+        return false;
+    }
+
+    public boolean restoreUser(String id) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            user.setRevoked(false);
+            userRepository.save(user);
+            return true;
+        }
+        return false;
+    }
+
     public boolean deleteUser(String id) {
+        return revokeUser(id);
+    }
+
+    public boolean permanentDeleteUser(String id) {
         if (userRepository.existsById(id)) {
             userRepository.deleteById(id);
             return true;

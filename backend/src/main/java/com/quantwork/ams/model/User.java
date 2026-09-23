@@ -18,8 +18,9 @@ public class User {
     private String name;
     private String email;
     private String password;
-    private String role;         // e.g. SUPER_ADMIN, Operations Lead, Engineering Lead
+    private String role;         // e.g. SUPER_ADMIN, Operations Lead, Engineering Lead, Manager, Employee
     private String department;   // e.g. System Admin, Operations, Engineering
     private String initials;     // e.g. SA, MS, JB
     private boolean superAdmin;  // true if Super Admin user
+    private boolean revoked = false; // true if user credentials have been revoked / deleted
 }

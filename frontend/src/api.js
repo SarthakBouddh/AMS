@@ -1,4 +1,6 @@
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_BASE_URL = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? '/api'
+  : 'http://localhost:8080/api';
 
 export const api = {
   // Auth
@@ -211,6 +213,23 @@ export const api = {
     return null;
   },
 
+  collectAsset: async (id, currentUser = 'Mara Singh', userId = null, returnDetails = {}) => {
+    try {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+      if (userId) params.append('userId', userId);
+      const res = await fetch(`${API_BASE_URL}/assets/${id}/collect?${params.toString()}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(returnDetails),
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
   deleteAsset: async (id, currentUser, userId = null) => {
     try {
       const params = new URLSearchParams();
@@ -308,10 +327,14 @@ export const api = {
   },
 
   // Requests & Approvals
-  getRequests: async (companyId = '') => {
+  getRequests: async (companyId = '', currentUser = null) => {
     try {
       const params = new URLSearchParams();
       if (companyId) params.append('companyId', companyId);
+      if (currentUser && typeof currentUser === 'object') {
+        if (currentUser.id) params.append('userId', currentUser.id);
+        if (currentUser.role) params.append('role', currentUser.role);
+      }
       const res = await fetch(`${API_BASE_URL}/requests?${params.toString()}`);
       if (res.ok) return await res.json();
     } catch (e) {
@@ -322,9 +345,15 @@ export const api = {
 
   createRequest: async (requestData, currentUser, companyId) => {
     try {
+      const userName = typeof currentUser === 'object' ? currentUser.name : (currentUser || 'Employee');
+      const userId = typeof currentUser === 'object' ? currentUser.id : '';
+      const userRole = typeof currentUser === 'object' ? currentUser.role : '';
+
       const params = new URLSearchParams();
-      params.append('currentUser', currentUser || 'Employee');
+      params.append('currentUser', userName || 'Employee');
       if (companyId) params.append('companyId', companyId);
+      if (userId) params.append('userId', userId);
+      if (userRole) params.append('currentUserRole', userRole);
 
       const res = await fetch(`${API_BASE_URL}/requests?${params.toString()}`, {
         method: 'POST',
@@ -382,7 +411,7 @@ export const api = {
     }
   },
 
-  allocateAdmin: async (id, currentUser) => {
+  allocateAdmin: async (id, currentUser, allocationDetails = null) => {
     try {
       const user = typeof currentUser === 'object' ? currentUser : { name: currentUser || 'Admin', role: 'Admin', id: '' };
       const params = new URLSearchParams();
@@ -392,6 +421,8 @@ export const api = {
 
       const res = await fetch(`${API_BASE_URL}/requests/${id}/allocate-admin?${params.toString()}`, {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(allocationDetails || {}),
       });
 
       if (res.ok) return await res.json();
@@ -415,5 +446,373 @@ export const api = {
       console.warn('Backend offline');
     }
     return null;
+  },
+
+  // Shared Resources & Bookings
+  getResources: async (type = 'ALL', search = '', companyId = '') => {
+    try {
+      const params = new URLSearchParams();
+      if (type && type !== 'ALL') params.append('type', type);
+      if (search) params.append('search', search);
+      if (companyId) params.append('companyId', companyId);
+
+      const res = await fetch(`${API_BASE_URL}/resources?${params.toString()}`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend offline');
+    }
+    return null;
+  },
+
+  createResource: async (resourceData, currentUser = 'Admin', companyId = '') => {
+    try {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+      if (companyId) params.append('companyId', companyId);
+
+      const res = await fetch(`${API_BASE_URL}/resources?${params.toString()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resourceData),
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
+  deleteResource: async (id) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/resources/${id}`, { method: 'DELETE' });
+      return res.ok;
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return false;
+  },
+
+  updateResource: async (id, resourceData, currentUser = 'Admin') => {
+    try {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+
+      const res = await fetch(`${API_BASE_URL}/resources/${id}?${params.toString()}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resourceData),
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
+  bulkCreateAssets: async (assetList, currentUser = 'Mara Singh', companyId = '', userId = '') => {
+    try {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+      if (companyId) params.append('companyId', companyId);
+      if (userId) params.append('userId', userId);
+
+      const res = await fetch(`${API_BASE_URL}/assets/bulk?${params.toString()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(assetList),
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
+  bulkCreateEmployees: async (employeeList, currentUser = 'Mara Singh', companyId = '') => {
+    try {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+      if (companyId) params.append('companyId', companyId);
+
+      const res = await fetch(`${API_BASE_URL}/employees/bulk?${params.toString()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(employeeList),
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
+  getBookings: async (companyId = '') => {
+    try {
+      const params = new URLSearchParams();
+      if (companyId) params.append('companyId', companyId);
+      const res = await fetch(`${API_BASE_URL}/resources/bookings?${params.toString()}`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend offline');
+    }
+    return null;
+  },
+
+  createBooking: async (bookingData, currentUser = 'Employee', companyId = '') => {
+    try {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+      if (companyId) params.append('companyId', companyId);
+
+      const res = await fetch(`${API_BASE_URL}/resources/bookings?${params.toString()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bookingData),
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
+  freeBooking: async (bookingId, currentUser = 'Employee') => {
+    try {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+      const res = await fetch(`${API_BASE_URL}/resources/bookings/${bookingId}/free?${params.toString()}`, {
+        method: 'PUT',
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
+  // Maintenance Tickets
+  getMaintenanceTickets: async (maintenanceType = '', status = '', search = '', companyId = '') => {
+    try {
+      const params = new URLSearchParams();
+      if (maintenanceType) params.append('maintenanceType', maintenanceType);
+      if (status) params.append('status', status);
+      if (search) params.append('search', search);
+      if (companyId) params.append('companyId', companyId);
+
+      const res = await fetch(`${API_BASE_URL}/maintenance?${params.toString()}`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend offline');
+    }
+    return null;
+  },
+
+  createMaintenanceTicket: async (ticketData, currentUser = 'Admin', companyId = '', userId = '') => {
+    try {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+      if (companyId) params.append('companyId', companyId);
+      if (userId) params.append('userId', userId);
+
+      const res = await fetch(`${API_BASE_URL}/maintenance?${params.toString()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ticketData),
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
+  resolveMaintenanceTicket: async (id, details = {}, currentUser = 'Admin', userId = '') => {
+    try {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+      if (userId) params.append('userId', userId);
+
+      const res = await fetch(`${API_BASE_URL}/maintenance/${id}/resolve?${params.toString()}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(details),
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
+  deleteMaintenanceTicket: async (id, currentUser = 'Admin') => {
+    try {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+
+      const res = await fetch(`${API_BASE_URL}/maintenance/${id}?${params.toString()}`, {
+        method: 'DELETE',
+      });
+      return res.ok;
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return false;
+  },
+
+  // Vendor Management Endpoints
+  getVendors: async (search = '', category = '', companyId = '') => {
+    try {
+      const params = new URLSearchParams();
+      if (search) params.append('search', search);
+      if (category && category !== 'All') params.append('category', category);
+      if (companyId) params.append('companyId', companyId);
+
+      const res = await fetch(`${API_BASE_URL}/vendors?${params.toString()}`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend offline');
+    }
+    return [];
+  },
+
+  createVendor: async (vendorData, currentUser = 'Admin', companyId = '') => {
+    try {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+      if (companyId) params.append('companyId', companyId);
+
+      const res = await fetch(`${API_BASE_URL}/vendors?${params.toString()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(vendorData),
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
+  updateVendor: async (id, vendorData, currentUser = 'Admin') => {
+    try {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+
+      const res = await fetch(`${API_BASE_URL}/vendors/${id}?${params.toString()}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(vendorData),
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
+  deleteVendor: async (id, currentUser = 'Admin') => {
+    try {
+      const params = new URLSearchParams();
+      params.append('currentUser', currentUser);
+
+      const res = await fetch(`${API_BASE_URL}/vendors/${id}?${params.toString()}`, {
+        method: 'DELETE',
+      });
+      return res.ok;
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return false;
+  },
+
+  // Company Credentials API
+  getCompanyUsers: async (companyId) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/companies/${companyId}/users`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend offline getting company users');
+    }
+    return [];
+  },
+
+  createCompanyCredential: async (companyId, userData) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/companies/${companyId}/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
+  updateCompanyCredential: async (companyId, userId, userData) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/companies/${companyId}/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
+  resetCompanyUserPassword: async (companyId, userId, newPassword = '') => {
+    try {
+      const params = new URLSearchParams();
+      if (newPassword) params.append('newPassword', newPassword);
+      const res = await fetch(`${API_BASE_URL}/companies/${companyId}/users/${userId}/reset-password?${params.toString()}`, {
+        method: 'POST',
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
+  deleteCompanyCredential: async (companyId, userId) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/companies/${companyId}/users/${userId}`, {
+        method: 'DELETE',
+      });
+      return res.ok;
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return false;
+  },
+
+  restoreCompanyUser: async (companyId, userId) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/companies/${companyId}/users/${userId}/restore`, {
+        method: 'PUT',
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return null;
+  },
+
+  permanentDeleteCompanyCredential: async (companyId, userId) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/companies/${companyId}/users/${userId}/permanent`, {
+        method: 'DELETE',
+      });
+      return res.ok;
+    } catch (e) {
+      console.error('API Error:', e);
+    }
+    return false;
   }
 };
+
+export default api;

@@ -2,6 +2,8 @@ package com.quantwork.ams.controller;
 
 import com.quantwork.ams.model.Asset;
 import com.quantwork.ams.model.MaintenanceTicket;
+import com.quantwork.ams.model.Vendor;
+import com.quantwork.ams.service.VendorService;
 import com.quantwork.ams.service.ActivityLogService;
 import com.quantwork.ams.service.AssetAuditLogService;
 import com.quantwork.ams.service.AssetService;
@@ -23,6 +25,9 @@ public class MaintenanceController {
 
     @Autowired
     private AssetService assetService;
+
+    @Autowired
+    private VendorService vendorService;
 
     @Autowired
     private ActivityLogService activityLogService;
@@ -58,6 +63,40 @@ public class MaintenanceController {
         }
         if (ticket.getStatus() == null || ticket.getStatus().trim().isEmpty()) {
             ticket.setStatus("OPEN");
+        }
+
+        // Auto-fill vendor contact details if linked asset or vendor exists
+        if (ticket.getAssetId() != null && !ticket.getAssetId().trim().isEmpty()) {
+            Optional<Asset> assetOpt = assetService.getAssetById(ticket.getAssetId());
+            if (assetOpt.isPresent()) {
+                Asset asset = assetOpt.get();
+                if (asset.getVendorId() != null && !asset.getVendorId().trim().isEmpty()) {
+                    Optional<Vendor> vOpt = vendorService.getVendorById(asset.getVendorId());
+                    if (vOpt.isPresent()) {
+                        Vendor v = vOpt.get();
+                        if (ticket.getVendorId() == null) ticket.setVendorId(v.getId());
+                        if (ticket.getVendorName() == null) ticket.setVendorName(v.getName());
+                        if (ticket.getVendorPhone() == null) ticket.setVendorPhone(v.getPhone());
+                        if (ticket.getVendorContactPerson() == null) ticket.setVendorContactPerson(v.getContactPerson());
+                        if (ticket.getVendorEmail() == null) ticket.setVendorEmail(v.getEmail());
+                        if (ticket.getVendorAddress() == null) ticket.setVendorAddress(v.getAddress());
+                    }
+                } else if (asset.getVendorName() != null && !asset.getVendorName().trim().isEmpty()) {
+                    if (ticket.getVendorName() == null) ticket.setVendorName(asset.getVendorName());
+                }
+            }
+        }
+
+        if (ticket.getVendorId() != null && !ticket.getVendorId().trim().isEmpty() && (ticket.getVendorPhone() == null || ticket.getVendorPhone().trim().isEmpty())) {
+            Optional<Vendor> vOpt = vendorService.getVendorById(ticket.getVendorId());
+            if (vOpt.isPresent()) {
+                Vendor v = vOpt.get();
+                ticket.setVendorName(v.getName());
+                ticket.setVendorPhone(v.getPhone());
+                ticket.setVendorContactPerson(v.getContactPerson());
+                ticket.setVendorEmail(v.getEmail());
+                ticket.setVendorAddress(v.getAddress());
+            }
         }
 
         MaintenanceTicket saved = ticketService.saveTicket(ticket);

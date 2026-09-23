@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Plus, Filter, MoreHorizontal, Laptop, Armchair, Monitor, ShieldCheck, UserPlus, Trash2, Edit3, ArrowRightLeft, History } from 'lucide-react';
+import { Search, Plus, Filter, MoreHorizontal, Laptop, Armchair, Monitor, ShieldCheck, UserPlus, Trash2, Edit3, ArrowRightLeft, History, Upload, RotateCcw, PackageCheck } from 'lucide-react';
 import { api } from '../api';
 
 export default function AssetInventoryPage({
@@ -14,7 +14,9 @@ export default function AssetInventoryPage({
   onAddAssetClick,
   onEditAssetClick,
   onAssignAssetClick,
-  onDeleteAssetClick
+  onCollectAssetClick,
+  onDeleteAssetClick,
+  onBulkUploadClick
 }) {
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [selectedAssetId, setSelectedAssetId] = useState(null);
@@ -126,13 +128,25 @@ export default function AssetInventoryPage({
           </p>
         </div>
 
-        <button
-          onClick={onAddAssetClick}
-          className="inline-flex items-center px-4 py-2.5 rounded-xl bg-[#1c372e] text-white text-sm font-bold shadow-md hover:bg-[#142a23] transition-all transform active:scale-95 shrink-0"
-        >
-          <Plus className="w-4 h-4 mr-2 text-[#f4c453]" />
-          <span>Add asset</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          {onBulkUploadClick && (
+            <button
+              onClick={onBulkUploadClick}
+              className="inline-flex items-center px-4 py-2.5 rounded-xl bg-[#e3efe9] text-[#1c372e] text-sm font-bold hover:bg-[#d5e7df] transition-all shrink-0"
+            >
+              <Upload className="w-4 h-4 mr-2 text-[#1c372e]" />
+              <span>Bulk Upload</span>
+            </button>
+          )}
+
+          <button
+            onClick={onAddAssetClick}
+            className="inline-flex items-center px-4 py-2.5 rounded-xl bg-[#1c372e] text-white text-sm font-bold shadow-md hover:bg-[#142a23] transition-all transform active:scale-95 shrink-0"
+          >
+            <Plus className="w-4 h-4 mr-2 text-[#f4c453]" />
+            <span>Add asset</span>
+          </button>
+        </div>
       </div>
 
       {/* Search Bar & Filters */}
@@ -283,6 +297,19 @@ export default function AssetInventoryPage({
                         {activeMenuId === asset.id && (
                           <div className="origin-top-right absolute right-4 mt-2 w-44 rounded-xl shadow-xl bg-white border border-[#e2ded2] ring-1 ring-black ring-opacity-5 z-20 divide-y divide-[#f0eee6] animate-scaleIn">
                             <div className="py-1">
+                              {asset.status === 'Assigned' && onCollectAssetClick && (
+                                <button
+                                  onClick={() => {
+                                    onCollectAssetClick(asset);
+                                    setActiveMenuId(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-xs font-bold text-emerald-800 bg-emerald-50/50 hover:bg-emerald-100 flex items-center"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5 mr-2 text-emerald-700" />
+                                  Collect / Return Asset
+                                </button>
+                              )}
+
                               <button
                                 onClick={() => {
                                   onAssignAssetClick(asset);

@@ -89,10 +89,20 @@ export default function SuperAdminPortal() {
     setIsAddingCredential(false);
   };
 
-  const handleDeleteCredential = async (userId) => {
+  const handleDeleteCredential = async (userId, userEmail, userName) => {
     if (!selectedCompanyForCredentials) return;
-    if (!window.confirm('Are you sure you want to delete this user credential?')) return;
-    await api.deleteCompanyUser(selectedCompanyForCredentials.id, userId);
+    const confirmDelete = window.confirm(
+      `REVOKE USER ACCESS & DELETE CREDENTIALS\n\nAre you sure you want to delete credentials for "${userName || 'User'}" (${userEmail})?\n\nThis will immediately revoke all access rights, invalidate login credentials, and remove this user from ${selectedCompanyForCredentials.name}.`
+    );
+    if (!confirmDelete) return;
+
+    const ok = await api.deleteCompanyUser(selectedCompanyForCredentials.id, userId);
+    if (ok !== false) {
+      alert(`Access revoked. Credentials for ${userEmail} have been deleted.`);
+    } else {
+      // Local fallback removal if backend offline
+      setCompanyUsers(prev => prev.filter(u => u.id !== userId));
+    }
     await loadCompanyUsers(selectedCompanyForCredentials.id);
   };
 
@@ -481,15 +491,15 @@ export default function SuperAdminPortal() {
                             <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
                               {usr.role || 'Company Admin'}
                             </span>
-                            <p className="text-[11px] font-mono text-gray-500 mt-1">Pass: {usr.password || 'admin123'}</p>
-                          </div>
+                        </div>
                           {!usr.superAdmin && (
                             <button
-                              onClick={() => handleDeleteCredential(usr.id)}
-                              title="Delete Credential"
-                              className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors"
+                              onClick={() => handleDeleteCredential(usr.id, usr.email, usr.name)}
+                              title="Delete Credential & Revoke All Access"
+                              className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors shrink-0"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5 mr-1" />
+                              <span>Delete Creds</span>
                             </button>
                           )}
                         </div>

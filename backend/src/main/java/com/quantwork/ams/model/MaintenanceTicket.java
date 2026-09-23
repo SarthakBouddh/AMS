@@ -18,6 +18,10 @@ public class MaintenanceTicket {
     private String employeeName;
     private String vendorId;
     private String vendorName;
+    private String vendorPhone;
+    private String vendorContactPerson;
+    private String vendorEmail;
+    private String vendorAddress;
     private String problemDescription;
     private String priority; // LOW, MEDIUM, HIGH, URGENT
     private String status;   // OPEN, IN_PROGRESS, UNDER_REPAIR, SENT_FOR_REPLACEMENT, RESOLVED, REPLACED
@@ -83,6 +87,18 @@ public class MaintenanceTicket {
 
     public String getVendorName() { return vendorName; }
     public void setVendorName(String vendorName) { this.vendorName = vendorName; }
+
+    public String getVendorPhone() { return vendorPhone; }
+    public void setVendorPhone(String vendorPhone) { this.vendorPhone = vendorPhone; }
+
+    public String getVendorContactPerson() { return vendorContactPerson; }
+    public void setVendorContactPerson(String vendorContactPerson) { this.vendorContactPerson = vendorContactPerson; }
+
+    public String getVendorEmail() { return vendorEmail; }
+    public void setVendorEmail(String vendorEmail) { this.vendorEmail = vendorEmail; }
+
+    public String getVendorAddress() { return vendorAddress; }
+    public void setVendorAddress(String vendorAddress) { this.vendorAddress = vendorAddress; }
 
     public String getProblemDescription() { return problemDescription; }
     public void setProblemDescription(String problemDescription) { this.problemDescription = problemDescription; }

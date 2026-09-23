@@ -139,13 +139,32 @@ export default function AddPersonModal({ isOpen, onClose, onSave, editingPerson 
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-[#475752] mb-1">
-              Role Title
+              Account Role Category *
+            </label>
+            <select
+              value={formData.systemRole || (formData.role && formData.role.toLowerCase().includes('manager') ? 'Manager' : formData.role && formData.role.toLowerCase().includes('head') ? 'Operational Head' : 'Employee')}
+              onChange={(e) => setFormData({ ...formData, systemRole: e.target.value, role: e.target.value })}
+              className="w-full px-3 py-2 bg-white border border-[#d8d4c7] rounded-xl text-sm font-bold text-[#1c2826] focus:outline-none focus:ring-2 focus:ring-[#1c372e]"
+              required
+            >
+              <option value="Employee">👥 Employee (Standard User)</option>
+              <option value="Manager">👔 Manager (Approver)</option>
+              <option value="Operational Head">⚡ Operational Head (Dept Lead)</option>
+            </select>
+            <p className="text-[11px] text-[#788883] mt-1">
+              Note: Admin credentials cannot be created from this directory form.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#475752] mb-1">
+              Designation / Title
             </label>
             <input
               type="text"
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              placeholder="e.g. Lead Product Designer"
+              placeholder="e.g. Senior Manager / Lead Product Designer"
               className="w-full px-3 py-2 bg-white border border-[#d8d4c7] rounded-xl text-sm text-[#1c2826] focus:outline-none focus:ring-2 focus:ring-[#1c372e]"
             />
           </div>

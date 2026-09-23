@@ -74,7 +74,51 @@ public class ResourceService {
         if (booking.getStatus() == null || booking.getStatus().trim().isEmpty()) {
             booking.setStatus("CONFIRMED");
         }
-        return bookingRepository.save(booking);
+
+        ResourceBooking saved = bookingRepository.save(booking);
+
+        // Update resource status to RESERVED
+        if (saved.getResourceId() != null) {
+            Optional<Resource> resOpt = resourceRepository.findById(saved.getResourceId());
+            if (resOpt.isPresent()) {
+                Resource res = resOpt.get();
+                res.setStatus("RESERVED");
+                resourceRepository.save(res);
+            }
+        }
+
+        return saved;
+    }
+
+    public ResourceBooking freeBooking(String bookingId) {
+        Optional<ResourceBooking> bookingOpt = bookingRepository.findById(bookingId);
+        if (bookingOpt.isEmpty()) {
+            return null;
+        }
+
+        ResourceBooking booking = bookingOpt.get();
+        booking.setStatus("RELEASED");
+        ResourceBooking updatedBooking = bookingRepository.save(booking);
+
+        // Free the associated resource setting its status back to AVAILABLE
+        if (booking.getResourceId() != null) {
+            Optional<Resource> resOpt = resourceRepository.findById(booking.getResourceId());
+            if (resOpt.isPresent()) {
+                Resource res = resOpt.get();
+                res.setStatus("AVAILABLE");
+                resourceRepository.save(res);
+            }
+        } else if (booking.getResourceName() != null) {
+            List<Resource> matches = resourceRepository.findAll().stream()
+                    .filter(r -> booking.getResourceName().equalsIgnoreCase(r.getName()))
+                    .collect(Collectors.toList());
+            for (Resource r : matches) {
+                r.setStatus("AVAILABLE");
+                resourceRepository.save(r);
+            }
+        }
+
+        return updatedBooking;
     }
 
     public void deleteResourcesByCompany(String companyId) {

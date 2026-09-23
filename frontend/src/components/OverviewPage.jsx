@@ -14,22 +14,22 @@ export default function OverviewPage({ stats, currentUser, onAddAssetClick, onAd
   const canSubmitRequest = !currentUser?.superAdmin;
   const isEmployeeView = !currentUser?.superAdmin && isEmployeeLike;
 
-  const totalAssets = stats?.totalAssets ?? 5;
-  const availableAssets = stats?.availableAssets ?? 2;
-  const utilizationRate = stats?.utilizationRate ?? 40;
-  const assignedCount = stats?.assignedCount ?? 2;
-  const portfolioValue = stats?.portfolioValue ?? 33778;
-  const needsAttention = stats?.needsAttentionCount ?? 1;
+  const totalAssets = stats?.totalAssets ?? 0;
+  const availableAssets = stats?.availableAssets ?? 0;
+  const utilizationRate = stats?.utilizationRate ?? 0;
+  const assignedCount = stats?.assignedCount ?? 0;
+  const portfolioValue = stats?.portfolioValue ?? 0;
+  const needsAttention = stats?.needsAttentionCount ?? 0;
 
   // Portfolio mix computation
-  const hardwareVal = stats?.categoryValue?.['Hardware'] ?? 3998;
-  const hardwareCount = stats?.categoryCount?.['Hardware'] ?? 3;
+  const hardwareVal = stats?.categoryValue?.['Hardware'] ?? 0;
+  const hardwareCount = stats?.categoryCount?.['Hardware'] ?? 0;
 
-  const softwareVal = stats?.categoryValue?.['Software'] ?? 28500;
-  const softwareCount = stats?.categoryCount?.['Software'] ?? 1;
+  const softwareVal = stats?.categoryValue?.['Software'] ?? 0;
+  const softwareCount = stats?.categoryCount?.['Software'] ?? 0;
 
-  const furnitureVal = stats?.categoryValue?.['Furniture'] ?? 1240;
-  const furnitureCount = stats?.categoryCount?.['Furniture'] ?? 1;
+  const furnitureVal = stats?.categoryValue?.['Furniture'] ?? 0;
+  const furnitureCount = stats?.categoryCount?.['Furniture'] ?? 0;
 
   const maxVal = Math.max(hardwareVal, softwareVal, furnitureVal, 1);
 

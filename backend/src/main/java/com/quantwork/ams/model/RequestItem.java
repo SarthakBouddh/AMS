@@ -35,6 +35,12 @@ public class RequestItem {
     private String rejectedAt;
     private String approvedByUserId;
     private String rejectedByUserId;
+    private String serialNo;
+    private String assetTag;
+    private String condition;
+    private String adminNotes;
+    private String allocationDate;
+    private String originCategory; // EMPLOYEE, MANAGER, ADMIN_DIRECT
 
     public RequestItem() {}
 
@@ -135,4 +141,22 @@ public class RequestItem {
 
     public String getRejectedByUserId() { return rejectedByUserId; }
     public void setRejectedByUserId(String rejectedByUserId) { this.rejectedByUserId = rejectedByUserId; }
+
+    public String getSerialNo() { return serialNo; }
+    public void setSerialNo(String serialNo) { this.serialNo = serialNo; }
+
+    public String getAssetTag() { return assetTag; }
+    public void setAssetTag(String assetTag) { this.assetTag = assetTag; }
+
+    public String getCondition() { return condition; }
+    public void setCondition(String condition) { this.condition = condition; }
+
+    public String getAdminNotes() { return adminNotes; }
+    public void setAdminNotes(String adminNotes) { this.adminNotes = adminNotes; }
+
+    public String getAllocationDate() { return allocationDate; }
+    public void setAllocationDate(String allocationDate) { this.allocationDate = allocationDate; }
+
+    public String getOriginCategory() { return originCategory; }
+    public void setOriginCategory(String originCategory) { this.originCategory = originCategory; }
 }

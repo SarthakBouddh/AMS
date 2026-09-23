@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Box, Tag, DollarSign, MapPin, User, FileText } from 'lucide-react';
 
-export default function AddAssetModal({ isOpen, onClose, onSave, editingAsset, employees }) {
+export default function AddAssetModal({ isOpen, onClose, onSave, editingAsset, employees = [], vendors = [] }) {
   const [formData, setFormData] = useState({
     name: '',
     assetTag: '',
@@ -10,10 +10,14 @@ export default function AddAssetModal({ isOpen, onClose, onSave, editingAsset, e
     location: 'Mumbai office',
     ownerId: '',
     ownerName: 'Unassigned',
+    vendorId: '',
+    vendorName: '',
     value: '',
     condition: 'Good',
     serialNumber: '',
     purchaseDate: new Date().toISOString().split('T')[0],
+    warrantyExpiryDate: '',
+    warrantyType: '1 Year Manufacturer',
     notes: ''
   });
 
@@ -27,14 +31,20 @@ export default function AddAssetModal({ isOpen, onClose, onSave, editingAsset, e
         location: editingAsset.location || 'Mumbai office',
         ownerId: editingAsset.ownerId || '',
         ownerName: editingAsset.ownerName || 'Unassigned',
+        vendorId: editingAsset.vendorId || '',
+        vendorName: editingAsset.vendorName || '',
         value: editingAsset.value ? String(editingAsset.value) : '',
         condition: editingAsset.condition || 'Good',
         serialNumber: editingAsset.serialNumber || '',
         purchaseDate: editingAsset.purchaseDate || new Date().toISOString().split('T')[0],
+        warrantyExpiryDate: editingAsset.warrantyExpiryDate || '',
+        warrantyType: editingAsset.warrantyType || '1 Year Manufacturer',
         notes: editingAsset.notes || ''
       });
     } else {
       const randomTag = 'AST-' + Math.floor(1000 + Math.random() * 9000);
+      const today = new Date();
+      const defaultExpiry = new Date(today.setFullYear(today.getFullYear() + 1)).toISOString().split('T')[0];
       setFormData({
         name: '',
         assetTag: randomTag,
@@ -43,10 +53,14 @@ export default function AddAssetModal({ isOpen, onClose, onSave, editingAsset, e
         location: 'Mumbai office',
         ownerId: '',
         ownerName: 'Unassigned',
+        vendorId: '',
+        vendorName: '',
         value: '',
         condition: 'Good',
         serialNumber: '',
         purchaseDate: new Date().toISOString().split('T')[0],
+        warrantyExpiryDate: defaultExpiry,
+        warrantyType: '1 Year Manufacturer',
         notes: ''
       });
     }
@@ -62,6 +76,18 @@ export default function AddAssetModal({ isOpen, onClose, onSave, editingAsset, e
       const emp = employees.find(e => e.id === selectedId);
       if (emp) {
         setFormData(prev => ({ ...prev, ownerId: emp.id, ownerName: emp.name, status: 'Assigned' }));
+      }
+    }
+  };
+
+  const handleVendorChange = (e) => {
+    const vId = e.target.value;
+    if (!vId) {
+      setFormData(prev => ({ ...prev, vendorId: '', vendorName: '' }));
+    } else {
+      const v = vendors.find(item => item.id === vId);
+      if (v) {
+        setFormData(prev => ({ ...prev, vendorId: v.id, vendorName: v.name }));
       }
     }
   };
@@ -201,6 +227,35 @@ export default function AddAssetModal({ isOpen, onClose, onSave, editingAsset, e
             </div>
           </div>
 
+          {/* Purchased From Vendor / Supplier */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#475752] mb-1">
+              Purchased From Vendor / Supplier
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <select
+                value={formData.vendorId || ''}
+                onChange={handleVendorChange}
+                className="w-full px-3 py-2 bg-white border border-[#d8d4c7] rounded-xl text-sm font-medium text-[#1c2826] focus:outline-none focus:ring-2 focus:ring-[#1c372e]"
+              >
+                <option value="">-- Select Registered Vendor --</option>
+                {vendors.map(v => (
+                  <option key={v.id} value={v.id}>
+                    {v.name} ({v.category || 'General'}) {v.phone ? `· ${v.phone}` : ''}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                type="text"
+                value={formData.vendorName}
+                onChange={(e) => setFormData({ ...formData, vendorName: e.target.value })}
+                placeholder="Or type custom vendor name"
+                className="w-full px-3 py-2 bg-white border border-[#d8d4c7] rounded-xl text-sm font-medium text-[#1c2826] focus:outline-none focus:ring-2 focus:ring-[#1c372e]"
+              />
+            </div>
+          </div>
+
           {/* Value & Condition */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -259,6 +314,39 @@ export default function AddAssetModal({ isOpen, onClose, onSave, editingAsset, e
                 onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
                 className="w-full px-3 py-2 bg-white border border-[#d8d4c7] rounded-xl text-sm font-medium text-[#1c2826] focus:outline-none focus:ring-2 focus:ring-[#1c372e]"
               />
+            </div>
+          </div>
+
+          {/* Warranty Expiry Date & Type */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#475752] mb-1">
+                Warranty Expiry Date *
+              </label>
+              <input
+                type="date"
+                required
+                value={formData.warrantyExpiryDate}
+                onChange={(e) => setFormData({ ...formData, warrantyExpiryDate: e.target.value })}
+                className="w-full px-3 py-2 bg-white border border-[#d8d4c7] rounded-xl text-sm font-semibold text-[#1c2826] focus:outline-none focus:ring-2 focus:ring-[#1c372e]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#475752] mb-1">
+                Warranty Coverage Type
+              </label>
+              <select
+                value={formData.warrantyType}
+                onChange={(e) => setFormData({ ...formData, warrantyType: e.target.value })}
+                className="w-full px-3 py-2 bg-white border border-[#d8d4c7] rounded-xl text-sm font-medium text-[#1c2826] focus:outline-none focus:ring-2 focus:ring-[#1c372e]"
+              >
+                <option value="1 Year Manufacturer">1 Year Manufacturer</option>
+                <option value="2 Year Extended">2 Year Extended</option>
+                <option value="3 Year AppleCare+">3 Year AppleCare+</option>
+                <option value="Lifetime Warranty">Lifetime Warranty</option>
+                <option value="Third-Party AMC">Third-Party AMC</option>
+              </select>
             </div>
           </div>
 

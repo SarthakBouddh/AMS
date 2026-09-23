@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import com.quantwork.ams.model.User;
+import com.quantwork.ams.service.UserService;
+
 @RestController
 @RequestMapping("/api/employees")
 public class EmployeeController {
@@ -22,7 +25,60 @@ public class EmployeeController {
     private AssetService assetService;
 
     @Autowired
+    private UserService userService;
+
+    @Autowired
     private ActivityLogService activityLogService;
+
+    private void syncUserCredentialsForEmployee(Employee emp) {
+        if (emp == null || emp.getEmail() == null || emp.getEmail().trim().isEmpty()) return;
+
+        String rawRole = emp.getRole() != null ? emp.getRole() : "Employee";
+        String lowRole = rawRole.toLowerCase();
+
+        // ONLY Admin credentials should NOT be created from Add People
+        if (lowRole.contains("admin") || lowRole.contains("superadmin")) {
+            return;
+        }
+
+        String normalizedRole = "Employee";
+        if (lowRole.contains("head") || lowRole.contains("lead") || lowRole.contains("operations")) {
+            normalizedRole = "Operational Head";
+        } else if (lowRole.contains("manager") || lowRole.contains("supervisor")) {
+            normalizedRole = "Manager";
+        }
+
+        String email = emp.getEmail().toLowerCase().trim();
+        List<User> existingCompanyUsers = userService.getUsersByCompany(emp.getCompanyId());
+        java.util.Optional<User> existingUserOpt = existingCompanyUsers.stream()
+                .filter(u -> email.equalsIgnoreCase(u.getEmail()))
+                .findFirst();
+
+        if (existingUserOpt.isEmpty()) {
+            String rawPassword = (emp.getPassword() != null && !emp.getPassword().trim().isEmpty())
+                    ? emp.getPassword().trim()
+                    : (emp.getName() != null ? emp.getName().split("\\s+")[0].toLowerCase().replaceAll("[^a-z0-9]", "") + "123" : "user123");
+            if (rawPassword.length() < 4) rawPassword = "user123";
+            
+            User newUser = new User();
+            newUser.setCompanyId(emp.getCompanyId() != null ? emp.getCompanyId() : "comp-default");
+            newUser.setCompanyName(emp.getCompanyName() != null ? emp.getCompanyName() : "Company");
+            newUser.setName(emp.getName());
+            newUser.setEmail(email);
+            newUser.setPassword(rawPassword);
+            newUser.setRole(normalizedRole);
+            newUser.setDepartment(emp.getDepartment() != null ? emp.getDepartment() : "Operations");
+            userService.createUser(newUser);
+        } else {
+            User existing = existingUserOpt.get();
+            existing.setName(emp.getName());
+            existing.setDepartment(emp.getDepartment());
+            existing.setRole(normalizedRole);
+            if (emp.getCompanyId() != null) existing.setCompanyId(emp.getCompanyId());
+            if (emp.getCompanyName() != null) existing.setCompanyName(emp.getCompanyName());
+            userService.updateUser(existing.getId(), existing);
+        }
+    }
 
     @GetMapping
     public ResponseEntity<List<Employee>> getAllEmployees(
@@ -62,6 +118,8 @@ public class EmployeeController {
             employee.setCompanyId(companyId);
         }
         Employee created = employeeService.saveEmployee(employee);
+        syncUserCredentialsForEmployee(created);
+
         activityLogService.logActivity(
                 "Added new employee " + created.getName() + " (" + created.getDepartment() + ")",
                 "PEOPLE",
@@ -70,6 +128,31 @@ public class EmployeeController {
                 created.getCompanyId()
         );
         return ResponseEntity.ok(created);
+    }
+
+    @PostMapping("/bulk")
+    public ResponseEntity<List<Employee>> bulkCreateEmployees(
+            @RequestBody List<Employee> employees,
+            @RequestParam(defaultValue = "Mara Singh") String currentUser,
+            @RequestParam(required = false) String companyId) {
+
+        List<Employee> createdList = new java.util.ArrayList<>();
+        for (Employee emp : employees) {
+            if (companyId != null && !companyId.trim().isEmpty()) {
+                emp.setCompanyId(companyId);
+            }
+            Employee created = employeeService.saveEmployee(emp);
+            syncUserCredentialsForEmployee(created);
+            createdList.add(created);
+        }
+        activityLogService.logActivity(
+                "Bulk uploaded " + createdList.size() + " team members to directory",
+                "PEOPLE",
+                currentUser,
+                "BULK_ADD_PEOPLE",
+                companyId
+        );
+        return ResponseEntity.ok(createdList);
     }
 
     @PutMapping("/{id}")
@@ -89,6 +172,7 @@ public class EmployeeController {
                         existing.setAvatarBg(employeeDetails.getAvatarBg());
                     }
                     Employee saved = employeeService.saveEmployee(existing);
+                    syncUserCredentialsForEmployee(saved);
                     activityLogService.logActivity(
                             "Updated employee profile: " + saved.getName(),
                             "PEOPLE",
@@ -102,7 +186,10 @@ public class EmployeeController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteEmployee(@PathVariable String id, @RequestParam(defaultValue = "Admin") String currentUser) {
+    public ResponseEntity<Void> deleteEmployee(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "Admin") String currentUser,
+            @RequestParam(required = false) String userId) {
         employeeService.getEmployeeById(id).ifPresent(emp -> {
             activityLogService.logActivity(
                     "Removed employee " + emp.getName() + " from organization",
@@ -112,7 +199,7 @@ public class EmployeeController {
                     emp.getCompanyId()
             );
         });
-        boolean deleted = employeeService.deleteEmployee(id);
+        boolean deleted = employeeService.deleteEmployee(id, currentUser, userId);
         if (deleted) {
             return ResponseEntity.ok().build();
         }

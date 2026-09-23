@@ -79,6 +79,40 @@ public class AssetController {
         return ResponseEntity.ok(created);
     }
 
+    @PostMapping("/bulk")
+    public ResponseEntity<List<Asset>> bulkCreateAssets(
+            @RequestBody List<Asset> assets,
+            @RequestParam(defaultValue = "Mara Singh") String currentUser,
+            @RequestParam(required = false) String companyId,
+            @RequestParam(required = false) String userId) {
+
+        List<Asset> createdList = new java.util.ArrayList<>();
+        for (Asset asset : assets) {
+            if (companyId != null && !companyId.trim().isEmpty()) {
+                asset.setCompanyId(companyId);
+            }
+            Asset created = assetService.saveAsset(asset);
+            createdList.add(created);
+            assetAuditLogService.recordAssetEvent(
+                    created.getId(),
+                    created.getCompanyId(),
+                    created.getAssetTag(),
+                    "ASSET_BULK_CREATED",
+                    "Bulk imported asset: " + created.getName() + " (" + created.getAssetTag() + ")",
+                    currentUser,
+                    userId
+            );
+        }
+        activityLogService.logActivity(
+                "Bulk uploaded " + createdList.size() + " assets to inventory",
+                "BULK_IMPORT",
+                currentUser,
+                "BULK_ADD",
+                companyId
+        );
+        return ResponseEntity.ok(createdList);
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<Asset> updateAsset(
             @PathVariable String id,
@@ -200,6 +234,57 @@ public class AssetController {
                 return ResponseEntity.badRequest().build();
             }
         }
+    }
+
+    @PutMapping("/{id}/collect")
+    public ResponseEntity<Asset> collectAsset(
+            @PathVariable String id,
+            @RequestBody(required = false) Map<String, String> payload,
+            @RequestParam(defaultValue = "Mara Singh") String currentUser,
+            @RequestParam(required = false) String userId) {
+        
+        Optional<Asset> existingOpt = assetService.getAssetById(id);
+        if (existingOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Asset asset = existingOpt.get();
+        String previousOwner = asset.getOwnerName() != null ? asset.getOwnerName() : "Employee";
+        String notes = payload != null ? payload.get("notes") : null;
+        String condition = payload != null ? payload.get("condition") : null;
+
+        asset.setOwnerId(null);
+        asset.setOwnerName("Unassigned");
+        asset.setStatus("Available");
+        if (condition != null && !condition.trim().isEmpty()) {
+            asset.setCondition(condition);
+        }
+        if (notes != null && !notes.trim().isEmpty()) {
+            asset.setNotes(notes);
+        }
+
+        Asset updated = assetService.saveAsset(asset);
+
+        String noteSuffix = (notes != null && !notes.trim().isEmpty()) ? " [Notes: " + notes.trim() + "]" : "";
+        activityLogService.logActivity(
+                "Collected asset " + asset.getName() + " (" + asset.getAssetTag() + ") back from " + previousOwner + noteSuffix,
+                asset.getAssetTag(),
+                currentUser,
+                "COLLECT",
+                asset.getCompanyId()
+        );
+
+        assetAuditLogService.recordAssetEvent(
+                updated.getId(),
+                updated.getCompanyId(),
+                updated.getAssetTag(),
+                "ASSET_COLLECTED",
+                "Asset collected back from " + previousOwner + noteSuffix,
+                currentUser,
+                userId
+        );
+
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")

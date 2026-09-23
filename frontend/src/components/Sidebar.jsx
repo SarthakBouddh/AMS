@@ -1,15 +1,18 @@
 import React from 'react';
-import { LayoutDashboard, Box, Users, LogOut, Globe, Calendar, GitPullRequest, Wrench, ShieldAlert, History, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Box, Users, LogOut, Globe, Calendar, GitPullRequest, Wrench, ShieldAlert, History, BarChart3, Key } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
   const isSuperAdmin = user?.superAdmin;
   const roleText = (user?.role || '').toLowerCase();
-  const isAdminLike = roleText.includes('admin') || roleText.includes('director') || roleText.includes('head');
-  const isManagerLike = roleText.includes('manager') || roleText.includes('lead') || roleText.includes('supervisor');
-  const isEmployeeLike = roleText.includes('employee') || roleText.includes('engineer') || roleText.includes('developer') || roleText.includes('support');
+  
+  const isAdmin = isSuperAdmin || 
+                  roleText.includes('admin') || 
+                  roleText.includes('director') || 
+                  roleText.includes('head') || 
+                  roleText.includes('operations');
 
   return (
-    <aside className="w-64 bg-[#1c372e] text-white flex flex-col justify-between border-r border-[#142a23] shrink-0 min-h-screen">
+    <aside className="w-64 bg-[#1c372e] text-white flex flex-col justify-between border-r border-[#142a23] shrink-0 min-h-screen font-sans">
       {/* Top Header & Logo */}
       <div>
         <div className="p-6 border-b border-[#28493e]">
@@ -38,42 +41,64 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
             <nav className="space-y-1">
               {isSuperAdmin ? (
                 /* Super Admin Scope ONLY */
-                <button
-                  onClick={() => setActiveTab('superadmin')}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'superadmin'
-                      ? 'bg-[#f4c453] text-[#1c372e] shadow-md'
-                      : 'text-[#c2d3cd] hover:bg-[#254439] hover:text-white'
+                <>
+                  <button
+                    onClick={() => setActiveTab('superadmin')}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      activeTab === 'superadmin'
+                        ? 'bg-[#f4c453] text-[#1c372e] shadow-md'
+                        : 'text-[#c2d3cd] hover:bg-[#254439] hover:text-white'
                     }`}
-                >
-                  <div className="flex items-center space-x-2.5">
-                    <Globe className="w-4 h-4" />
-                    <span>Company Control</span>
-                  </div>
-                  {activeTab === 'superadmin' && <div className="w-1.5 h-1.5 rounded-full bg-[#1c372e]" />}
-                </button>
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <Globe className="w-4 h-4" />
+                      <span>Company Control</span>
+                    </div>
+                    {activeTab === 'superadmin' && <div className="w-1.5 h-1.5 rounded-full bg-[#1c372e]" />}
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab('credentials')}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      activeTab === 'credentials'
+                        ? 'bg-[#f4c453] text-[#1c372e] shadow-md'
+                        : 'text-[#c2d3cd] hover:bg-[#254439] hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <Key className="w-4 h-4" />
+                      <span>Company Credentials</span>
+                    </div>
+                    {activeTab === 'credentials' && <div className="w-1.5 h-1.5 rounded-full bg-[#1c372e]" />}
+                  </button>
+                </>
               ) : (
                 /* Company Tenant Workspace Scope */
                 <>
-                  <button
-                    onClick={() => setActiveTab('overview')}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'overview'
-                        ? 'bg-[#f4c453] text-[#1c372e] shadow-md'
-                        : 'text-[#c2d3cd] hover:bg-[#254439] hover:text-white'
-                      }`}
-                  >
-                    <div className="flex items-center space-x-2.5">
-                      <LayoutDashboard className="w-4 h-4" />
-                      <span>Overview</span>
-                    </div>
-                  </button>
-
-                  {!isEmployeeLike && (
+                  {isAdmin && (
                     <button
-                      onClick={() => setActiveTab('assets')}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'assets'
+                      onClick={() => setActiveTab('overview')}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                        activeTab === 'overview'
                           ? 'bg-[#f4c453] text-[#1c372e] shadow-md'
                           : 'text-[#c2d3cd] hover:bg-[#254439] hover:text-white'
-                        }`}
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <LayoutDashboard className="w-4 h-4" />
+                        <span>Overview</span>
+                      </div>
+                    </button>
+                  )}
+
+                  {isAdmin && (
+                    <button
+                      onClick={() => setActiveTab('assets')}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                        activeTab === 'assets'
+                          ? 'bg-[#f4c453] text-[#1c372e] shadow-md'
+                          : 'text-[#c2d3cd] hover:bg-[#254439] hover:text-white'
+                      }`}
                     >
                       <div className="flex items-center space-x-2.5">
                         <Box className="w-4 h-4" />
@@ -82,13 +107,14 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
                     </button>
                   )}
 
-                  {!isEmployeeLike && (
+                  {isAdmin && (
                     <button
                       onClick={() => setActiveTab('people')}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'people'
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                        activeTab === 'people'
                           ? 'bg-[#f4c453] text-[#1c372e] shadow-md'
                           : 'text-[#c2d3cd] hover:bg-[#254439] hover:text-white'
-                        }`}
+                      }`}
                     >
                       <div className="flex items-center space-x-2.5">
                         <Users className="w-4 h-4" />
@@ -97,27 +123,45 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
                     </button>
                   )}
 
-                  {!isEmployeeLike && (
+                  {isAdmin && (
                     <button
-                      onClick={() => setActiveTab('resources')}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'resources'
+                      onClick={() => setActiveTab('credentials')}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                        activeTab === 'credentials'
                           ? 'bg-[#f4c453] text-[#1c372e] shadow-md'
                           : 'text-[#c2d3cd] hover:bg-[#254439] hover:text-white'
-                        }`}
+                      }`}
                     >
                       <div className="flex items-center space-x-2.5">
-                        <Calendar className="w-4 h-4" />
-                        <span>Resource Booking</span>
+                        <Key className="w-4 h-4" />
+                        <span>User Credentials</span>
                       </div>
                     </button>
                   )}
 
+                  {/* Resource Booking available for Admin, Manager, and Employee */}
                   <button
-                    onClick={() => setActiveTab('requests')}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'requests'
+                    onClick={() => setActiveTab('resources')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                      activeTab === 'resources'
                         ? 'bg-[#f4c453] text-[#1c372e] shadow-md'
                         : 'text-[#c2d3cd] hover:bg-[#254439] hover:text-white'
-                      }`}
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <Calendar className="w-4 h-4" />
+                      <span>Resource Booking</span>
+                    </div>
+                  </button>
+
+                  {/* Requests & Approvals available for Admin, Manager, and Employee */}
+                  <button
+                    onClick={() => setActiveTab('requests')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                      activeTab === 'requests'
+                        ? 'bg-[#f4c453] text-[#1c372e] shadow-md'
+                        : 'text-[#c2d3cd] hover:bg-[#254439] hover:text-white'
+                    }`}
                   >
                     <div className="flex items-center space-x-2.5">
                       <GitPullRequest className="w-4 h-4" />
@@ -125,13 +169,14 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
                     </div>
                   </button>
 
-                  {!isEmployeeLike && (
+                  {isAdmin && (
                     <button
                       onClick={() => setActiveTab('maintenance')}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'maintenance'
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                        activeTab === 'maintenance'
                           ? 'bg-[#f4c453] text-[#1c372e] shadow-md'
                           : 'text-[#c2d3cd] hover:bg-[#254439] hover:text-white'
-                        }`}
+                      }`}
                     >
                       <div className="flex items-center space-x-2.5">
                         <Wrench className="w-4 h-4" />
@@ -140,13 +185,14 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
                     </button>
                   )}
 
-                  {!isEmployeeLike && (
+                  {isAdmin && (
                     <button
                       onClick={() => setActiveTab('warranty')}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'warranty'
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                        activeTab === 'warranty'
                           ? 'bg-[#f4c453] text-[#1c372e] shadow-md'
                           : 'text-[#c2d3cd] hover:bg-[#254439] hover:text-white'
-                        }`}
+                      }`}
                     >
                       <div className="flex items-center space-x-2.5">
                         <ShieldAlert className="w-4 h-4" />
@@ -155,13 +201,30 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
                     </button>
                   )}
 
-                  {!isEmployeeLike && (
+                  {isAdmin && (
                     <button
-                      onClick={() => setActiveTab('audit')}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'audit'
+                      onClick={() => setActiveTab('vendors')}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                        activeTab === 'vendors'
                           ? 'bg-[#f4c453] text-[#1c372e] shadow-md'
                           : 'text-[#c2d3cd] hover:bg-[#254439] hover:text-white'
-                        }`}
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <Globe className="w-4 h-4" />
+                        <span>Vendors & Suppliers</span>
+                      </div>
+                    </button>
+                  )}
+
+                  {isAdmin && (
+                    <button
+                      onClick={() => setActiveTab('audit')}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                        activeTab === 'audit'
+                          ? 'bg-[#f4c453] text-[#1c372e] shadow-md'
+                          : 'text-[#c2d3cd] hover:bg-[#254439] hover:text-white'
+                      }`}
                     >
                       <div className="flex items-center space-x-2.5">
                         <History className="w-4 h-4" />
@@ -170,13 +233,14 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
                     </button>
                   )}
 
-                  {!isEmployeeLike && (
+                  {isAdmin && (
                     <button
                       onClick={() => setActiveTab('reports')}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'reports'
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                        activeTab === 'reports'
                           ? 'bg-[#f4c453] text-[#1c372e] shadow-md'
                           : 'text-[#c2d3cd] hover:bg-[#254439] hover:text-white'
-                        }`}
+                      }`}
                     >
                       <div className="flex items-center space-x-2.5">
                         <BarChart3 className="w-4 h-4" />

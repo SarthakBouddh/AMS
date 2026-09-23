@@ -23,4 +23,5 @@ public class Employee {
     private String initials;     // e.g. JB
     private String location;     // e.g. Mumbai office
     private String avatarBg;     // e.g. bg-amber-100 text-amber-800
+    private String password;     // e.g. custom or default password for credential creation
 }

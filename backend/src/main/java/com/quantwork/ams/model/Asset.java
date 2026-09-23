@@ -28,6 +28,8 @@ public class Asset {
     private String warrantyType;
     private String purchaseDate;
     private String notes;
+    private Integer assignedCount = 0;
+    private java.util.List<String> assignedUsers = new java.util.ArrayList<>();
 
     public Asset() {}
 
@@ -111,4 +113,10 @@ public class Asset {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public Integer getAssignedCount() { return assignedCount; }
+    public void setAssignedCount(Integer assignedCount) { this.assignedCount = assignedCount; }
+
+    public java.util.List<String> getAssignedUsers() { return assignedUsers; }
+    public void setAssignedUsers(java.util.List<String> assignedUsers) { this.assignedUsers = assignedUsers; }
 }
